@@ -29,7 +29,7 @@ const CONFIG = {
 // Anything from earlier versions (v1 keys, other daily numbering, other puzzle content) is discarded, never resumed.
 const LS = { results: "wis.results.v2", stats: "wis.stats.v2", settings: "wis.settings.v1", custom: "wis.custom.v1" };
 const LEGACY_LS = ["wis.results.v1", "wis.stats.v1"];
-const BUILD = "fc8673d5f6";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
+const BUILD = "6fb5222cdf";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
 const BANDS = [[100, "🟩", "e-g"], [500, "🟨", "e-y"], [2000, "🟧", "e-o"], [Infinity, "🟥", "e-r"]];   // km thresholds
 
 // ================================================================

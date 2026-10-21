@@ -189,5 +189,20 @@ window.WIS_MARK_ITEMS = [
   "best_guess": "Night streets / restaurant in Tokyo (AEON store visible)",
   "confidence": "low",
   "note": "Need neighbourhood"
+ },
+ {
+  "id": "r13",
+  "files": [
+   {
+    "name": "HL_17929993494297444_02.mp4",
+    "src": "mark/media/HL_17929993494297444_02.mp4",
+    "type": "video"
+   }
+  ],
+  "post_url": "https://www.instagram.com/stories/highlights/17929993494297444/",
+  "caption": "(story) 泰熱 (Thailand is hot)",
+  "best_guess": "Café/shop arcade with a cat somewhere in Thailand (city unknown; same highlight has Bangkok nightlife + Kanchanaburi)",
+  "confidence": "low",
+  "note": "Requested as a new round (v7); no signage or landmark to pin. Pin it here and it can go into a day."
  }
 ];
