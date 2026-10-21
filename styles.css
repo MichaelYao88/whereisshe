@@ -332,39 +332,11 @@ html.map-open,html.map-open body{overflow:hidden}
 .pin-lbl{font-size:10px;font-weight:800;color:#fff;transform:rotate(45deg);display:grid;place-items:center;height:100%}
 
 /* ================= Portrait-safe media (never crop the featured woman) =================
-   IG media is mostly 4:5 / 9:16. The photo/video is always object-fit:contain inside a frame that never sits
-   under the minimap, HUD or credit. Leftover space is filled by the blurred copy (.media::before). */
+   IG media is mostly 4:5 / 9:16. The photo/video always fills the whole stage with object-fit:contain (never cropped);
+   leftover space is filled by the blurred copy (.media::before). The minimap floats translucently over it (v4). */
 .media{overflow:hidden}
 .media{--pt:0px;--pr:0px;--pb:0px;--pl:0px}
 .media img,.media video{position:absolute;top:var(--pt);left:var(--pl);width:calc(100% - var(--pl) - var(--pr));height:calc(100% - var(--pt) - var(--pb));object-fit:contain}
-/* Wide desktop: centered portrait column, symmetric side gutters as wide as the minimap so the dock never covers her */
-@media (min-width:1101px){
-  .media{--pt:58px;--pr:330px;--pb:14px;--pl:330px}
-  .credit{max-width:300px}
-  .mute-btn{bottom:44px}
-}
-/* Narrow desktop / tablet / phone: stack HUD, media and map as rows so nothing overlays the photo */
-@media (max-width:1100px){
-  .stage{display:flex;flex-direction:column}
-  .hud{position:relative;top:auto;left:auto;right:auto;padding:8px 10px;flex:none;background:rgba(0,0,0,.35);order:-1}
-  .media{position:relative;inset:auto;flex:1;min-height:0;--pt:6px;--pr:8px;--pb:6px;--pl:8px}
-  .ph-tag{top:58px;left:10px}
-  .zoom-btn{top:56px;right:10px}
-  .mute-btn{top:auto;bottom:auto;left:10px;top:100px}
-  .credit{position:relative;left:auto;bottom:auto;max-width:none;margin:0 8px 6px;flex:none;align-self:flex-start;order:3}
-  .dock[data-mode="mini"]{position:relative;right:auto;bottom:auto;width:auto;flex:none;order:4;margin:0 8px 8px;
-    display:grid;grid-template-columns:1fr minmax(120px,38%);gap:8px;align-items:stretch}
-  .dock[data-mode="mini"] .map-area{height:110px;max-height:none;border-radius:12px;opacity:1}
-  .dock[data-mode="mini"] .dock-foot{display:flex}
-  .dock[data-mode="mini"] .guess-btn{height:100%}
-  .dock[data-mode="mini"] .mini-catch{display:block;position:absolute;inset:0;z-index:950;cursor:pointer}
-  .dock[data-mode="mini"] .expand-btn{z-index:960}
-}
-@media (max-width:1100px) and (min-width:761px){
-  .stage{width:min(760px,calc(100vw - 24px));margin-left:calc(50% - min(380px,calc(50vw - 12px)))}
-  .dock[data-mode="mini"] .map-area{height:150px}
-}
-
 /* ===== v3: no blue hero card on the play screen; the HUD pill is the round indicator ===== */
 #hero{display:none}
 .stage{margin-top:8px}
@@ -377,7 +349,30 @@ html.map-open,html.map-open body{overflow:hidden}
 .media.zoomed #photo{transition:none}
 .zoom-hint{display:none}
 @media (max-width:1100px) and (pointer:coarse){
-  .media.zoomable .zoom-hint{display:block;position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:2;font-size:10.5px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);padding:4px 10px;border-radius:999px;pointer-events:none;animation:zh 3.2s ease forwards}
+  .media.zoomable .zoom-hint{display:block;position:absolute;left:50%;top:54px;transform:translateX(-50%);z-index:2;font-size:10.5px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);padding:4px 10px;border-radius:999px;pointer-events:none;animation:zh 3.2s ease forwards}
   .media.zoomed .zoom-hint{display:none}
 }
 @keyframes zh{0%,70%{opacity:1}100%{opacity:0}}
+
+/* ===== v4: the minimap floats over the media, GeoGuessr-style =====
+   Idle: small + translucent. Hover (desktop) / tap (touch): opaque; desktop hover grows it, a tap on touch opens the
+   full-screen map. The Guess button sits under the minimap (shown on touch once a pin exists). */
+.dock[data-mode="mini"]{width:260px;right:14px;bottom:14px}
+.dock[data-mode="mini"] .map-area{height:170px;opacity:.55;transition:height .18s ease,opacity .18s}
+.dock[data-mode="mini"] .guess-btn{opacity:.55;transition:opacity .18s}
+.dock[data-mode="mini"] .guess-btn:not(:disabled){opacity:1}
+.dock[data-mode="mini"]:hover .map-area,.dock[data-mode="mini"].hovering .map-area,.dock[data-mode="mini"]:focus-within .map-area,
+.dock[data-mode="mini"]:hover .guess-btn,.dock[data-mode="mini"].hovering .guess-btn{opacity:1}
+.dock[data-mode="mini"] .map-hint{opacity:.9}
+.credit{max-width:calc(100% - 300px)}
+@media (max-width:1100px){
+  .dock[data-mode="mini"]{right:8px;bottom:8px;width:40vw;max-width:220px;min-width:140px;gap:6px}
+  .dock[data-mode="mini"] .map-area{height:min(28vw,150px);min-height:100px;max-height:none;border-radius:12px}
+  .dock[data-mode="mini"] .mini-catch{display:block;position:absolute;inset:0;z-index:950;cursor:pointer}
+  .dock[data-mode="mini"] .expand-btn{z-index:960;width:30px;height:30px;min-width:30px;font-size:14px}
+  .dock[data-mode="mini"] .dock-foot{display:none}
+  .dock[data-mode="mini"].has-pin .dock-foot{display:flex}
+  .dock[data-mode="mini"].has-pin .map-area{opacity:.85}
+  .dock[data-mode="mini"] .leaflet-control-attribution{display:none}
+  .credit{max-width:calc(100% - min(40vw,220px) - 28px);bottom:10px}
+}

@@ -151,7 +151,7 @@ function ensureMap() {
     const g = state.game; if (!g || state.busy || g.rounds.length > g.cur || g.done || dockMode() === "reveal") return;
     const ll = e.latlng.wrap(); state.pin = { lat: ll.lat, lng: ll.lng };
     layer.clearLayers(); L.marker(ll, { icon: pinIcon("you") }).addTo(layer);
-    $("#guessBtn").disabled = false; $("#pinNote").textContent = "Pin dropped"; $("#mapHint").classList.add("gone");
+    $("#guessBtn").disabled = false; $("#pinNote").textContent = "Pin dropped"; $("#mapHint").classList.add("gone"); $("#dock").classList.add("has-pin");
   });
 }
 const worldZoom = () => { const w = map.getSize().x; return w > 1000 ? 2 : w > 340 ? 1 : 0; };
@@ -230,32 +230,18 @@ function showRound(i, revealed) {
   setDock("mini");
   $("#mapHint").textContent = compact.matches ? "Tap to open the map" : "Click the map to drop your pin";
   $("#mapHint").classList.remove("gone"); $("#pinNote").textContent = "No pin yet";
-  $("#guessBtn").disabled = true;
+  $("#guessBtn").disabled = true; $("#dock").classList.remove("has-pin");
   resetMap(); renderDots();
   if (revealed) revealRound(i, false);
 }
-// ---- per-media layout (wide desktop only): choose the frame from the media's aspect ratio so she is never
-// cropped (object-fit: contain) and, where possible, never under the minimap. Candidates: whole stage (if the
-// contained media misses the minimap), symmetric side gutters (portrait), or a band above the minimap (landscape).
+// ---- per-media layout (v4): the photo/video always fills the whole stage, contained (never cropped), sized by its own
+// shape; the minimap floats over it. We only record the orientation (portrait / landscape / square) for styling + tests.
 const wideStage = matchMedia("(min-width:1101px)");
 function fitMedia() {
   const m = $("#media"), vid = $("#video"), img = $("#photo"), isVid = !vid.classList.contains("hidden");
   const nw = isVid ? vid.videoWidth : img.naturalWidth, nh = isVid ? vid.videoHeight : img.naturalHeight;
-  const set = (t, r, b, l, kind) => { m.style.setProperty("--pt", t + "px"); m.style.setProperty("--pr", r + "px"); m.style.setProperty("--pb", b + "px"); m.style.setProperty("--pl", l + "px"); m.dataset.fit = kind; };
   if (!nw || !nh) return;
-  m.dataset.orient = nw / nh > 1.1 ? "landscape" : nw / nh < 0.9 ? "portrait" : "square";
-  if (!wideStage.matches) { ["--pt", "--pr", "--pb", "--pl"].forEach(k => m.style.removeProperty(k)); m.dataset.fit = "stack"; return; }
-  const st = $("#stage").getBoundingClientRect(), W = st.width, H = st.height, a = nw / nh;
-  const dw = 300 + 14 + 14, dh = 200 + 8 + 44 + 14 + 14;       // minimap + Guess button + margins (mini mode, not hovered)
-  const T = 54, E = 14;                                         // HUD row on top, edge margin
-  const fit = (t, r, b, l) => { const bw = W - l - r, bh = H - t - b, s = Math.min(bw / nw, bh / nh), w = nw * s, h = nh * s;
-    const x = l + (bw - w) / 2, y = t + (bh - h) / 2; return { t, r, b, l, w, h, x, y }; };
-  const hitsDock = c => c.x + c.w > W - dw && c.y + c.h > H - dh;
-  const opts = [[T, E, E, E, "full"], [T, dw, E, dw, "gutters"], [T, E, dh, E, "above-map"], [T, dw, E, E, "left-of-map"]]
-    .map(o => ({ ...fit(o[0], o[1], o[2], o[3]), kind: o[4] }));
-  const ok = opts.filter(c => !hitsDock(c));
-  const best = (ok.length ? ok : opts).reduce((A, B) => (B.w * B.h > A.w * A.h * 1.02 ? B : A));
-  set(best.t, best.r, best.b, best.l, best.kind);
+  m.dataset.orient = nw / nh > 1.1 ? "landscape" : nw / nh < 0.9 ? "portrait" : "square"; m.dataset.fit = "full";
 }
 wideStage.addEventListener ? wideStage.addEventListener("change", fitMedia) : 0;
 window.addEventListener("resize", () => { fitMedia(); Zoom.reset(); });
