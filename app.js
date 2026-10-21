@@ -201,7 +201,7 @@ function renderDots() {
   const g = state.game;
   $("#roundDots").innerHTML = Array.from({ length: CONFIG.rounds }, (_, i) => { const r = g.rounds[i];
     return r ? `<i class="${band(r.dist)[2]}" title="Round ${i + 1}: ${n0(r.pts)} pts"></i>` : `<i class="${i === g.cur ? "cur" : ""}"></i>`; }).join("") +
-    `<span>Round ${Math.min(g.cur + 1, CONFIG.rounds)} of ${CONFIG.rounds}</span>`;
+    `<span>Round ${Math.min(g.cur + 1, CONFIG.rounds)}/${CONFIG.rounds}</span>`;
   $("#running").textContent = `${n0(totalOf(g))} pts`;
 }
 
@@ -221,11 +221,12 @@ function openPuzzle(p) {
 function showRound(i, revealed) {
   const p = state.puzzle, g = state.game, r = p.rounds[i]; g.cur = i; state.pin = null;
   $("#heroKind").textContent = `Round ${i + 1} / ${CONFIG.rounds}`;
-  $("#question").textContent = p.featured ? `Where is ${p.featured.name || "she"}?` : "Where is she?";
+  $("#question").textContent = "Where is she?";   // her name/handle only appears on the Meet her card after round 5
   showMedia(r, i);
   $("#phTag").classList.toggle("hidden", !p.placeholder);
   $("#phTag").textContent = r.media === "video" ? "Placeholder clip" : "Placeholder photo";
-  $("#credit").textContent = `${r.media === "video" ? "Video" : "Photo"} credit is shown after you guess`;
+  if (p.featured) $("#credit").innerHTML = `<span class="who-hint">👀 Find out who she is after round 5</span>`;
+  else $("#credit").textContent = `${r.media === "video" ? "Video" : "Photo"} credit is shown after you guess`;
   setDock("mini");
   $("#mapHint").textContent = compact.matches ? "Tap to open the map" : "Click the map to drop your pin";
   $("#mapHint").classList.remove("gone"); $("#pinNote").textContent = "No pin yet";
@@ -233,21 +234,86 @@ function showRound(i, revealed) {
   resetMap(); renderDots();
   if (revealed) revealRound(i, false);
 }
+// ---- per-media layout (wide desktop only): choose the frame from the media's aspect ratio so she is never
+// cropped (object-fit: contain) and, where possible, never under the minimap. Candidates: whole stage (if the
+// contained media misses the minimap), symmetric side gutters (portrait), or a band above the minimap (landscape).
+const wideStage = matchMedia("(min-width:1101px)");
+function fitMedia() {
+  const m = $("#media"), vid = $("#video"), img = $("#photo"), isVid = !vid.classList.contains("hidden");
+  const nw = isVid ? vid.videoWidth : img.naturalWidth, nh = isVid ? vid.videoHeight : img.naturalHeight;
+  const set = (t, r, b, l, kind) => { m.style.setProperty("--pt", t + "px"); m.style.setProperty("--pr", r + "px"); m.style.setProperty("--pb", b + "px"); m.style.setProperty("--pl", l + "px"); m.dataset.fit = kind; };
+  if (!nw || !nh) return;
+  m.dataset.orient = nw / nh > 1.1 ? "landscape" : nw / nh < 0.9 ? "portrait" : "square";
+  if (!wideStage.matches) { ["--pt", "--pr", "--pb", "--pl"].forEach(k => m.style.removeProperty(k)); m.dataset.fit = "stack"; return; }
+  const st = $("#stage").getBoundingClientRect(), W = st.width, H = st.height, a = nw / nh;
+  const dw = 300 + 14 + 14, dh = 200 + 8 + 44 + 14 + 14;       // minimap + Guess button + margins (mini mode, not hovered)
+  const T = 54, E = 14;                                         // HUD row on top, edge margin
+  const fit = (t, r, b, l) => { const bw = W - l - r, bh = H - t - b, s = Math.min(bw / nw, bh / nh), w = nw * s, h = nh * s;
+    const x = l + (bw - w) / 2, y = t + (bh - h) / 2; return { t, r, b, l, w, h, x, y }; };
+  const hitsDock = c => c.x + c.w > W - dw && c.y + c.h > H - dh;
+  const opts = [[T, E, E, E, "full"], [T, dw, E, dw, "gutters"], [T, E, dh, E, "above-map"], [T, dw, E, E, "left-of-map"]]
+    .map(o => ({ ...fit(o[0], o[1], o[2], o[3]), kind: o[4] }));
+  const ok = opts.filter(c => !hitsDock(c));
+  const best = (ok.length ? ok : opts).reduce((A, B) => (B.w * B.h > A.w * A.h * 1.02 ? B : A));
+  set(best.t, best.r, best.b, best.l, best.kind);
+}
+wideStage.addEventListener ? wideStage.addEventListener("change", fitMedia) : 0;
+window.addEventListener("resize", () => { fitMedia(); Zoom.reset(); });
+
+// ---- touch pinch-zoom / pan / double-tap on photos (mobile). Starts fully fit; one-finger drags scroll the page
+// until you zoom in (touch-action: pan-y), then pan the photo (touch-action: none). Videos are left alone.
+const Zoom = (() => {
+  let s = 1, tx = 0, ty = 0, pts = new Map(), start = null, lastTap = 0;
+  const el = () => $("#photo"), box = () => $("#media");
+  function geom() { const e = el(), bw = e.offsetWidth, bh = e.offsetHeight, nw = e.naturalWidth || bw, nh = e.naturalHeight || bh, k = Math.min(bw / nw, bh / nh);
+    const cw = nw * k, ch = nh * k; return { bw, bh, cw, ch, ox: (bw - cw) / 2, oy: (bh - ch) / 2 }; }
+  function clamp() { const g = geom();
+    const ax = (bw, c, o, t) => s * c <= bw ? (bw - s * c) / 2 - s * o : Math.min(-s * o, Math.max(bw - s * (o + c), t));
+    tx = ax(g.bw, g.cw, g.ox, tx); ty = ax(g.bh, g.ch, g.oy, ty); }
+  function apply() { if (s <= 1.001) { s = 1; tx = 0; ty = 0; }
+    clamp(); const e = el(); e.style.transform = s === 1 ? "" : `translate(${tx}px,${ty}px) scale(${s})`;
+    box().classList.toggle("zoomed", s > 1); }
+  function zoomAt(ns, px, py) { ns = Math.max(1, Math.min(5, ns)); tx = px - (px - tx) * (ns / s); ty = py - (py - ty) * (ns / s); s = ns; apply(); }
+  // coordinates relative to the untransformed image box (transform-origin 0 0)
+  const rel = (x, y) => { const b = box().getBoundingClientRect(), e = el(); return { x: x - b.left - e.offsetLeft, y: y - b.top - e.offsetTop }; };
+  function down(e) { if (e.pointerType !== "touch" || !box().classList.contains("zoomable")) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 2) { const [a, b] = [...pts.values()]; start = { d: Math.hypot(a.x - b.x, a.y - b.y), s, tx, ty, m: rel((a.x + b.x) / 2, (a.y + b.y) / 2) }; }
+    else if (pts.size === 1) { start = { pan: true, x: e.clientX, y: e.clientY, tx, ty };
+      const now = Date.now(); if (now - lastTap < 300) { const p = rel(e.clientX, e.clientY); if (s > 1) { s = 1; apply(); } else zoomAt(2.5, p.x, p.y); lastTap = 0; } else lastTap = now; } }
+  function move(e) { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size >= 2 && start && start.d) { e.preventDefault(); const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), m = rel((a.x + b.x) / 2, (a.y + b.y) / 2);
+      const ns = Math.max(1, Math.min(5, start.s * d / start.d)); tx = m.x - (start.m.x - start.tx) * (ns / start.s); ty = m.y - (start.m.y - start.ty) * (ns / start.s); s = ns; apply(); }
+    else if (pts.size === 1 && start && start.pan && s > 1) { e.preventDefault(); tx = start.tx + e.clientX - start.x; ty = start.ty + e.clientY - start.y; apply(); } }
+  function up(e) { pts.delete(e.pointerId); if (pts.size === 1) { const [a] = [...pts.values()]; start = { pan: true, x: a.x, y: a.y, tx, ty }; } else if (!pts.size) start = null; }
+  function attach() { const b = box(); b.addEventListener("pointerdown", down); b.addEventListener("pointermove", move, { passive: false });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(t => b.addEventListener(t, up));
+    // iOS Safari: stop its page-level pinch while a pinch is on the photo
+    b.addEventListener("touchmove", e => { if (b.classList.contains("zoomable") && (e.touches.length > 1 || s > 1)) e.preventDefault(); }, { passive: false });
+    ["gesturestart", "gesturechange"].forEach(t => b.addEventListener(t, e => { if (b.classList.contains("zoomable")) e.preventDefault(); }));
+    return true; }
+  return { attach, reset() { s = 1; tx = 0; ty = 0; pts.clear(); start = null; const e = $("#photo"); if (e) e.style.transform = ""; $("#media") && $("#media").classList.remove("zoomed"); },
+           state: () => ({ s, tx, ty }), zoomAt: (ns, x, y) => zoomAt(ns, x, y), attached: false };
+})();
+Zoom.attached = Zoom.attach();
+
 // ---- media: photo or looping muted video (autoplay needs muted + playsinline on iOS/Android)
 function showMedia(r, i) {
   const img = $("#photo"), vid = $("#video"), mute = $("#muteBtn"), isVid = r.media === "video";
+  Zoom.reset(); $("#media").classList.toggle("zoomable", !isVid);
   img.classList.toggle("hidden", isVid); vid.classList.toggle("hidden", !isVid); mute.classList.toggle("hidden", !isVid); $("#zoomBtn").classList.toggle("hidden", isVid);
   if (isVid) {
     img.removeAttribute("src");
     vid.muted = true; vid.defaultMuted = true; vid.setAttribute("muted", ""); vid.loop = true; vid.playsInline = true; vid.autoplay = true;
     if (r.poster) vid.poster = r.poster; else vid.removeAttribute("poster");
     $("#media").style.setProperty("--media-bg", r.poster ? `url("${r.poster}")` : "none");
-    if (vid.getAttribute("src") !== r.video) { vid.src = r.video; vid.load(); }
+    vid.onloadedmetadata = fitMedia;
+    if (vid.getAttribute("src") !== r.video) { vid.src = r.video; vid.load(); } else fitMedia();
     vid.setAttribute("aria-label", `Round ${i + 1} video`); setMuteLabel();
     const pr = vid.play(); if (pr && pr.catch) pr.catch(() => {});   // if autoplay is blocked the poster shows; tapping the video plays it
   } else {
     if (!vid.paused) vid.pause(); vid.removeAttribute("src"); vid.removeAttribute("poster"); vid.load();
-    img.classList.add("loading"); img.onload = () => img.classList.remove("loading"); img.src = r.img; img.alt = `Round ${i + 1} photo`;
+    img.classList.add("loading"); img.onload = () => { img.classList.remove("loading"); fitMedia(); }; img.src = r.img; img.alt = `Round ${i + 1} photo`;
     $("#media").style.setProperty("--media-bg", `url("${r.img}")`);   // blurred fill behind the contain-fit photo
   }
 }
@@ -273,7 +339,9 @@ function revealRound(i, animate) {
   $("#rvDist").textContent = `${band(gr.dist)[1]} ${fmtKm(gr.dist)} away`;
   $("#rvPlace").textContent = `📍 ${r.place}${r.country ? ", " + r.country : ""}`;
   $("#rvFact").innerHTML = r.fact ? `<b>Fun fact:</b> ${esc(r.fact)}` : "";
-  $("#credit").innerHTML = $("#rvCredit").innerHTML = creditHtml(r);
+  // Featured days: no handle / IG link until the Meet her card after round 5
+  $("#credit").innerHTML = $("#rvCredit").innerHTML = state.puzzle.featured
+    ? `${r.media === "video" ? "Video" : "Photo"} used with permission · <span class="who-hint">find out who she is after round 5</span>` : creditHtml(r);
   $("#mapHint").classList.add("gone");
   const nb = $("#nextRoundBtn");
   nb.textContent = i + 1 >= CONFIG.rounds ? "See results →" : "Next round →";
@@ -395,7 +463,7 @@ function goPractice(idx) {
   if (idx == null) idx = (dayNumber(todayKey()) + 1) % ALL.length;
   state.practiceIdx = ((idx % ALL.length) + ALL.length) % ALL.length; openPuzzle(ALL[state.practiceIdx]);
 }
-const dayLabel = p => p.featured ? `@${p.featured.handle}` : "Demo day · placeholder photos";
+const dayLabel = p => p.featured ? "Featured day · she's revealed after round 5" : "Demo day · placeholder photos";
 function goArchive() {
   showView("archive"); setHash("#archive");
   const today = todayKey(), last = dayNumber(today), all = load(LS.results, {}), rows = [];
@@ -530,7 +598,7 @@ async function handleFiles(files) {
   } catch (e) { console.error(e); toast("Couldn't read that file: " + e.message); }
 }
 window.WISLoadFiles = handleFiles;
-window.WIS = { CONFIG, dailyPool, dockMode, scoreFor, haversineKm, band, resultText, puzzles: () => ALL, map: () => map };   // test hooks
+window.WIS = { Zoom, fitMedia, summaryMap: () => summaryMap, CONFIG, dailyPool, dockMode, scoreFor, haversineKm, band, resultText, puzzles: () => ALL, map: () => map };   // test hooks
 
 // ================================================================ wire up
 $("#guessBtn").onclick = submitGuess; $("#nextRoundBtn").onclick = nextRound; $("#nextBtn").onclick = next;

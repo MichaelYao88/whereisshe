@@ -364,3 +364,20 @@ html.map-open,html.map-open body{overflow:hidden}
   .stage{width:min(760px,calc(100vw - 24px));margin-left:calc(50% - min(380px,calc(50vw - 12px)))}
   .dock[data-mode="mini"] .map-area{height:150px}
 }
+
+/* ===== v3: no blue hero card on the play screen; the HUD pill is the round indicator ===== */
+#hero{display:none}
+.stage{margin-top:8px}
+.who-hint{opacity:.9}
+.credit .who-hint{font-weight:700}
+/* touch pinch-zoom on photos: page scroll works until zoomed in, then one finger pans the photo */
+.media.zoomable{touch-action:pan-y}
+.media.zoomable.zoomed{touch-action:none}
+.media #photo{transform-origin:0 0;will-change:transform}
+.media.zoomed #photo{transition:none}
+.zoom-hint{display:none}
+@media (max-width:1100px) and (pointer:coarse){
+  .media.zoomable .zoom-hint{display:block;position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:2;font-size:10.5px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);padding:4px 10px;border-radius:999px;pointer-events:none;animation:zh 3.2s ease forwards}
+  .media.zoomed .zoom-hint{display:none}
+}
+@keyframes zh{0%,70%{opacity:1}100%{opacity:0}}

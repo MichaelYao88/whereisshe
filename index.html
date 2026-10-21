@@ -60,7 +60,8 @@
     <!-- ===== PLAY AREA (GeoGuessr / WhereTaken style): media fills the stage, HUD overlaid, minimap docked bottom-right ===== -->
     <section class="stage" id="stage" aria-label="Round">
       <div class="media" id="media">
-        <img id="photo" alt="Where is she? Today's photo" draggable="false">
+        <img id="photo" alt="Where is she? Round photo" draggable="false">
+        <span class="zoom-hint" id="zoomHint">Pinch to zoom · double-tap</span>
         <!-- Video rounds (media_type "video"): muted + autoplay + loop + playsinline so it autoplays on iOS/Android -->
         <video id="video" class="hidden" muted autoplay loop playsinline webkit-playsinline preload="auto" disablepictureinpicture aria-label="Where is she? Round video"></video>
       </div>
