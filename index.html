@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WhereIsShe · A daily where-in-the-world game</title>
+<meta name="description" content="A daily GeoGuessr-style game: five photos of She somewhere in the world. Drop a pin, score up to 25,000.">
+<meta name="color-scheme" content="light dark">
+<script>
+  // Apply saved/system theme before first paint (no flash)
+  (function(){try{var t=JSON.parse(localStorage.getItem("wis.settings.v1")||"{}").theme||"system";
+  if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t;}catch(e){}})();
+</script>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css">
+<link rel="stylesheet" href="styles.css">
+<!--
+  ADSENSE: when approved, add the AdSense loader once here, e.g.
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+-->
+</head>
+<body>
+
+<!-- Floating corner controls (no header bar) -->
+<header class="corners">
+  <button class="round-btn brand-btn" id="menuBtn" aria-label="Menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
+  </button>
+  <div class="top-actions">
+    <button class="round-btn" id="themeBtn" aria-label="Toggle light/dark mode" title="Light / dark"></button>
+    <button class="round-btn" id="statsBtn" aria-label="Your stats" title="Your stats">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- ===== AD SLOT: single top banner (placeholder) =====
+     Replace .ad-fill with your AdSense unit, e.g.
+     <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXX" data-ad-slot="1111111111"
+          data-ad-format="horizontal" data-full-width-responsive="true"></ins>
+     <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+-->
+<div class="ad-banner" id="adTop"><span class="ad-tag">Ad</span><div class="ad-fill">Banner ad placeholder · 320×50 / 728×90</div></div>
+
+<nav class="tabs" role="tablist">
+  <button class="tab" data-view="today" role="tab">Today</button>
+  <button class="tab" data-view="archive" role="tab">Archive</button>
+  <button class="tab" data-view="practice" role="tab">Practice</button>
+</nav>
+
+<main class="wrap">
+  <!-- ======== PLAY VIEW ======== -->
+  <section id="playView">
+    <article class="hero" id="hero">
+      <div class="hero-top"><a class="hero-brand" href="#" id="homeLink" aria-label="WhereIsShe home">WhereIsShe</a><span class="hero-kind" id="heroKind">Round 1 / 5</span><span id="heroNo">No. 001</span></div>
+      <h1 id="question">Where is she?</h1>
+      <div class="hero-date" id="heroDate"></div>
+    </article>
+
+    <!-- ===== PLAY AREA (GeoGuessr / WhereTaken style): media fills the stage, HUD overlaid, minimap docked bottom-right ===== -->
+    <section class="stage" id="stage" aria-label="Round">
+      <div class="media" id="media">
+        <img id="photo" alt="Where is she? Today's photo" draggable="false">
+        <!-- Video rounds (media_type "video"): muted + autoplay + loop + playsinline so it autoplays on iOS/Android -->
+        <video id="video" class="hidden" muted autoplay loop playsinline webkit-playsinline preload="auto" disablepictureinpicture aria-label="Where is she? Round video"></video>
+      </div>
+      <div class="hud">
+        <span class="hud-pill tries" id="roundDots"></span>
+        <span class="hud-pill running" id="running">0 pts</span>
+      </div>
+      <span class="ph-tag" id="phTag" title="Demo landmark photo from Wikimedia Commons, not a featured woman">Placeholder photo</span>
+      <button class="zoom-btn" id="zoomBtn" aria-label="View photo full size">⤢</button>
+      <button class="mute-btn hidden" id="muteBtn" aria-pressed="false">🔇 Tap to unmute</button>
+      <div class="credit" id="credit">Photo credit is shown after you guess</div>
+
+      <!-- Map dock: data-mode = mini (corner minimap) | full (fullscreen overlay) | reveal (large result map) -->
+      <div class="dock" id="dock" data-mode="mini">
+        <div class="map-area">
+          <div id="map" aria-label="World map. Click to drop your pin."></div>
+          <div class="map-hint" id="mapHint">Click the map to drop your pin</div>
+          <button class="dock-btn expand-btn" id="expandBtn" aria-label="Expand map to full screen" title="Full-screen map">⤢</button>
+          <button class="dock-btn close-btn" id="closeMapBtn" aria-label="Collapse map">✕ Close map</button>
+          <div class="mini-catch" id="miniCatch" role="button" aria-label="Open the map"></div>
+        </div>
+        <div class="dock-foot">
+          <span class="pin-note" id="pinNote">No pin yet</span>
+          <button class="pill-btn primary guess-btn" id="guessBtn" disabled>Guess ↵</button>
+        </div>
+        <div class="dock-reveal" id="reveal" aria-live="polite">
+          <div class="rv-score"><b id="rvPoints">0</b><span>/ 5,000</span></div>
+          <div class="rv-body">
+            <div class="rv-dist" id="rvDist"></div>
+            <div class="rv-place" id="rvPlace"></div>
+            <p class="rv-fact" id="rvFact"></p>
+            <div class="rv-credit" id="rvCredit"></div>
+          </div>
+          <button class="pill-btn primary" id="nextRoundBtn">Next round →</button>
+        </div>
+      </div>
+    </section>
+    <div class="under-card"><button class="link-btn" id="shareChallengeTop">Share today's puzzle ↗</button></div>
+
+    <!-- RESULT -->
+    <section class="result hidden" id="result">
+      <div class="score-card">
+        <div class="score-big" id="scoreBig"></div>
+        <div>
+          <div class="score-title" id="scoreTitle"></div>
+          <div class="emoji-row" id="emojiRow"></div>
+        </div>
+      </div>
+      <!-- Shown after the interstitial: the day's featured (opted-in) woman, or a demo-day note -->
+      <div class="meet-her" id="meetHer"></div>
+      <div class="answer">
+        <h3>Your 5 guesses</h3>
+        <div id="summaryMap" class="summary-map" aria-label="Map of all five guesses"></div>
+        <div id="roundList"></div>
+      </div>
+
+      <div class="community">
+        <div class="community-head"><span>How did everyone do?</span><span class="badge" id="communityBadge">Coming soon</span></div>
+        <div id="communityBody" class="community-body"></div>
+      </div>
+
+      <div class="share-row">
+        <button class="pill-btn primary" id="shareResultBtn">Share my result</button>
+        <button class="pill-btn" id="shareChallengeBtn">Share today's puzzle</button>
+      </div>
+      <div class="actions"><button class="pill-btn ghost" id="nextBtn">More puzzles →</button></div>
+    </section>
+  </section>
+
+  <!-- ======== OPT-IN ("Feature me") VIEW: #optin ======== -->
+  <section id="optinView" class="hidden">
+    <h2 class="section-title"><span class="hl">Feature me</span></h2>
+    <p class="section-sub">Want to be a future "She"? Opt in and we'll build a day around your travel photos.</p>
+    <form class="optin-form card-box" id="optinForm" novalidate>
+      <label>Instagram handle<input name="handle" placeholder="@yourhandle" autocomplete="off" required></label>
+      <label>Email<input name="email" type="email" placeholder="you@example.com" autocomplete="email" required>
+        <small>Only used to confirm your request and contact you before anything goes live. Never shown.</small></label>
+      <label>Anything we should know? <span class="opt">(optional)</span><textarea name="note" rows="3" placeholder="Favorite trips, photos you'd like us to use or avoid…"></textarea></label>
+      <label class="check"><input type="checkbox" name="isMe"><span id="consentText">I am the person in the photos, and I consent to WhereIsShe using them (and linking my Instagram) in the game.</span></label>
+      <label class="check"><input type="checkbox" name="adult"><span>I am 18 or older.</span></label>
+      <label class="check"><input type="checkbox" name="removal"><span>I understand I can have my photos and profile link removed <b>at any time</b>, for any reason.</span></label>
+      <div class="notice">🔒 <b>Our rule:</b> We never pin a home address. You approve your day before it goes live.</div>
+      <button class="pill-btn primary" type="submit">Feature me</button>
+      <p class="form-msg" id="optinMsg" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <!-- ======== ARCHIVE VIEW ======== -->
+  <section id="archiveView" class="hidden">
+    <h2 class="section-title"><span class="hl">Archive</span></h2>
+    <p class="section-sub">Every daily so far. Archive plays don't affect your streak.</p>
+    <ol class="archive-list" id="archiveList"></ol>
+  </section>
+</main>
+
+<footer class="foot">
+  <a href="#optin" id="optinLink">Feature me</a> · <a href="#" id="removeLink">Remove my photos</a><br>
+  WhereIsShe prototype · Demo photos: Wikimedia Commons (see <a href="#" id="aboutLink">credits</a>) · Map © <a href="https://openfreemap.org">OpenFreeMap</a> · © OpenStreetMap contributors
+</footer>
+
+<!-- ===== INTERSTITIAL AD (placeholder) =====
+     Shown after the 5th guess, BEFORE the final results screen, on every mode including today's daily
+     (CONFIG.interstitialBeforeResults). For production use an AdSense "Ad placement" / vignette or a
+     Google Ad Manager interstitial instead. -->
+<div class="overlay hidden" id="interstitial" aria-modal="true" role="dialog">
+  <div class="inter-box">
+    <div class="inter-top"><span class="ad-tag">Ad</span><span class="inter-note">Your results are ready</span><button class="skip" id="skipAd" disabled>Skip in 5</button></div>
+    <div class="inter-fill">
+      <!-- ADSENSE: interstitial / large rectangle unit goes here -->
+      <div class="inter-ph"><span>Interstitial ad placeholder<br><small>336×280 · full-screen on mobile</small></span></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="modal">
+  <div class="modal-box">
+    <button class="close" id="modalClose" aria-label="Close">✕</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<div class="overlay hidden lightbox" id="lightbox"><img id="lightImg" alt=""></div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="fileInput" accept=".json,.csv,.xlsx,.xls" hidden>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="vendor/maplibre/maplibre-gl.js"></script>
+<script src="vendor/maplibre/leaflet-maplibre-gl.js"></script>
+<script src="tiles.js"></script>
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="puzzles-data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
