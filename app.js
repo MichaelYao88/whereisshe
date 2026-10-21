@@ -25,7 +25,11 @@ const CONFIG = {
   contactEmail: "hello@whereisshe.example",   // PLACEHOLDER: set a real inbox before launch
   // Map tiles: see tiles.js (OpenFreeMap vector basemap via MapLibre, Esri raster fallback; no API keys).
 };
-const LS = { results: "wis.results.v1", stats: "wis.stats.v1", settings: "wis.settings.v1", custom: "wis.custom.v1" };
+// v6: saved progress is namespaced by mode + day + puzzle id + a hash of the puzzle's content, under fresh v2 keys.
+// Anything from earlier versions (v1 keys, other daily numbering, other puzzle content) is discarded, never resumed.
+const LS = { results: "wis.results.v2", stats: "wis.stats.v2", settings: "wis.settings.v1", custom: "wis.custom.v1" };
+const LEGACY_LS = ["wis.results.v1", "wis.stats.v1"];
+const BUILD = "ce65b82775";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
 const BANDS = [[100, "🟩", "e-g"], [500, "🟨", "e-y"], [2000, "🟧", "e-o"], [Infinity, "🟥", "e-r"]];   // km thresholds
 
 // ================================================================
@@ -48,6 +52,13 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+try { LEGACY_LS.forEach(k => localStorage.removeItem(k)); } catch {}
+// A browser can briefly mix a cached app.js from one deploy with puzzles-data.js from another (GitHub Pages caches each
+// file for 10 min). That mix numbers the days wrongly, so reload once from a cache-busting URL instead of running it.
+if (!BUILD.startsWith("__") && window.WIS_BUILD && window.WIS_BUILD !== BUILD) {
+  let tried = false; try { tried = sessionStorage.getItem("wis.reloaded") === BUILD + "|" + window.WIS_BUILD; sessionStorage.setItem("wis.reloaded", BUILD + "|" + window.WIS_BUILD); } catch {}
+  if (!tried) { location.replace(location.pathname + "?r=" + Date.now() + location.hash); return; }
+}
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const keyOf = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const todayKey = () => keyOf(new Date());
@@ -135,9 +146,25 @@ mq.addEventListener?.("change", () => settings.theme === "system" && applyTheme(
 // ================================================================ state
 const state = { mode: "daily", dateKey: todayKey(), puzzle: null, practiceIdx: 0, game: null, pin: null, busy: false };
 const puzzleForDay = n => { const pool = dailyPool(); return pool[((n % pool.length) + pool.length) % pool.length]; };
-const resultKey = () => state.mode === "practice" ? `p:${state.puzzle.id}` : `d:${state.dateKey}`;
-const getResult = () => { const r = load(LS.results, {})[resultKey()]; return r && r.id === state.puzzle.id ? r : null; };
-const setResult = r => { const all = load(LS.results, {}); all[resultKey()] = { ...r, id: state.puzzle.id, at: Date.now() }; save(LS.results, all); };
+// content hash (FNV-1a) of what a player actually guesses on: media + answer of each round, in order
+const puzzleHash = p => { if (p._h) return p._h; let h = 0x811c9dc5; const t = JSON.stringify(p.rounds.map(r => [r.media, r.img, r.video, r.lat, r.lng]));
+  for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return (p._h = h.toString(36)); };
+const keyFor = (mode, dateKey, p) => mode === "practice" ? `p:${p.id}@${puzzleHash(p)}` : `d:${dateKey}:${p.id}@${puzzleHash(p)}`;
+const resultKey = () => keyFor(state.mode, state.dateKey, state.puzzle);
+// a saved game is only used if it belongs to exactly this puzzle (id + content hash) and is internally consistent
+function validSaved(r, p) {
+  if (!r || typeof r !== "object" || r.id !== p.id || r.h !== puzzleHash(p) || !Array.isArray(r.rounds)) return false;
+  const n = Math.min(CONFIG.rounds, p.rounds.length);
+  if (r.rounds.length > n || !r.rounds.every(x => x && isFinite(x.pts) && isFinite(x.dist) && isFinite(x.lat) && isFinite(x.lng))) return false;
+  return !r.done || r.rounds.length === n;
+}
+function savedFor(key, p) {
+  const all = load(LS.results, {}), r = all[key];
+  if (r && !validSaved(r, p)) { delete all[key]; save(LS.results, all); return null; }
+  return r || null;
+}
+const getResult = () => savedFor(resultKey(), state.puzzle);
+const setResult = r => { const all = load(LS.results, {}); all[resultKey()] = { ...r, id: state.puzzle.id, h: puzzleHash(state.puzzle), at: Date.now() }; save(LS.results, all); };
 const isToday = () => state.mode === "daily";
 function linkHash() { return state.mode === "practice" ? `#p=${encodeURIComponent(state.puzzle.id)}` : `#d=${state.dateKey}`; }
 function setHash(h) { try { history.replaceState(null, "", h || location.pathname + location.search); } catch { location.hash = h; } }
@@ -214,12 +241,12 @@ function openPuzzle(p) {
   showView("play"); renderHero(); $("#result").classList.add("hidden"); $("#stage").classList.remove("hidden");
   setHash(linkHash());
   const saved = getResult();
-  state.game = saved || { rounds: [], cur: 0, done: false, adSeen: false };
+  state.game = saved ? { ...saved } : { rounds: [], cur: 0, done: false, adSeen: false };
   ensureMap();
   const g = state.game;
-  if (g.done && g.adSeen) { showRound(CONFIG.rounds - 1, true); showResults(false); }
-  else if (g.rounds.length > g.cur) showRound(g.cur, true);    // guessed but didn't press Next
-  else showRound(g.cur, false);
+  // Resume only this puzzle's own progress, and always at a playable point: never re-open an old guess's reveal map.
+  if (g.done) { g.adSeen = true; showRound(CONFIG.rounds - 1, true); showResults(false); }
+  else showRound(g.rounds.length, false);                     // next unguessed round (round 1 on a fresh game)
   window.scrollTo({ top: 0 });
 }
 function showRound(i, revealed) {
@@ -487,9 +514,9 @@ function goPractice(idx) {
 const dayLabel = p => p.featured ? "Featured day · she's revealed after round 5" : "Custom day";
 function goArchive() {
   showView("archive"); setHash("#archive");
-  const today = todayKey(), last = dayNumber(today), all = load(LS.results, {}), rows = [];
+  const today = todayKey(), last = dayNumber(today), rows = [];
   for (let n = last; n >= 0; n--) {          // only today and earlier; future dailies are never listed
-    const key = keyFromDay(n), p = puzzleForDay(n), r = all[`d:${key}`], mine = r && r.id === p.id ? r : null;
+    const key = keyFromDay(n), p = puzzleForDay(n), mine = savedFor(keyFor("archive", key, p), p);
     const badge = mine && mine.done ? `<span class="ar done">${n0(mine.total ?? totalOf(mine))}</span>` : mine && mine.rounds?.length ? `<span class="ar">${mine.rounds.length}/5</span>` : `<span class="ar">Play →</span>`;
     rows.push(`<li><button class="arch ${n === last ? "today" : ""}" data-key="${key}"><span class="an">#${pad3(n + 1)}<small>${n === last ? "Today" : prettyDate(key).replace(/, \d{4}$/, "")}</small></span>
       <span class="aq">📍 Where is she?<small>${esc(dayLabel(p))}</small></span>${badge}</button></li>`);
@@ -581,8 +608,7 @@ function settingsModal() {
   if ($("#mReset")) $("#mReset").onclick = () => { localStorage.removeItem(LS.custom); custom = null; ALL = parseRows(window.WIS_PUZZLE_ROWS || []); closeModal(); toast("Built-in puzzles restored"); goToday(); };
 }
 function listModal() {
-  const all = load(LS.results, {});
-  openModal(`<h2>All puzzles (${ALL.length})</h2><div class="plist">${ALL.map((p, i) => { const r = all["p:" + p.id];
+  openModal(`<h2>All puzzles (${ALL.length})</h2><div class="plist">${ALL.map((p, i) => { const r = savedFor(keyFor("practice", null, p), p);
     return `<button data-i="${i}"><span>📍 ${esc(p.id)} · ${esc(dayLabel(p))}</span><span class="done">${r && r.done ? n0(totalOf(r)) : ""}</span></button>`; }).join("")}</div>`);
   $$(".plist button").forEach(b => b.onclick = () => { closeModal(); goPractice(+b.dataset.i); });
 }
