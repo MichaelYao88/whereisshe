@@ -11,9 +11,9 @@
   (function(){try{var t=JSON.parse(localStorage.getItem("wis.settings.v1")||"{}").theme||"system";
   if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t;}catch(e){}})();
 </script>
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=6fb5222cdf">
-<link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css?v=6fb5222cdf">
-<link rel="stylesheet" href="styles.css?v=6fb5222cdf">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=afb18a461d">
+<link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css?v=afb18a461d">
+<link rel="stylesheet" href="styles.css?v=afb18a461d">
 <!--
   ADSENSE: when approved, add the AdSense loader once here, e.g.
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
@@ -70,7 +70,7 @@
         <span class="hud-pill running" id="running">0 pts</span>
       </div>
       <button class="zoom-btn" id="zoomBtn" aria-label="View photo full size">⤢</button>
-      <button class="mute-btn hidden" id="muteBtn" aria-pressed="false">🔇 Tap to unmute</button>
+      <button class="mute-btn hidden" id="muteBtn" aria-pressed="false"><span class="mi" aria-hidden="true">🔇</span><span class="mt">Tap for sound</span></button>
       <div class="credit" id="credit">Photo credit is shown after you guess</div>
 
       <!-- Map dock: data-mode = mini (corner minimap) | full (fullscreen overlay) | reveal (large result map) -->
@@ -157,7 +157,7 @@
 </main>
 
 <footer class="foot">
-  <a href="#optin" id="optinLink">Feature me</a> · <a href="#" id="removeLink">Remove my photos</a><br>
+  <a href="#optin" id="optinLink">Feature me</a> · <a href="#" id="removeLink">Remove my photos</a> · <a href="#" id="clearLink">Clear my game data</a><br>
   WhereIsShe prototype · Photos used with permission (<a href="#" id="aboutLink">about</a>) · Map © <a href="https://openfreemap.org">OpenFreeMap</a> · © OpenStreetMap contributors
 </footer>
 
@@ -187,12 +187,12 @@
 <div class="toast" id="toast"></div>
 <input type="file" id="fileInput" accept=".json,.csv,.xlsx,.xls" hidden>
 
-<script src="vendor/leaflet/leaflet.js?v=6fb5222cdf"></script>
-<script src="vendor/maplibre/maplibre-gl.js?v=6fb5222cdf"></script>
-<script src="vendor/maplibre/leaflet-maplibre-gl.js?v=6fb5222cdf"></script>
-<script src="tiles.js?v=6fb5222cdf"></script>
-<script src="vendor/xlsx.full.min.js?v=6fb5222cdf"></script>
-<script src="puzzles-data.js?v=6fb5222cdf"></script>
-<script src="app.js?v=6fb5222cdf"></script>
+<script src="vendor/leaflet/leaflet.js?v=afb18a461d"></script>
+<script src="vendor/maplibre/maplibre-gl.js?v=afb18a461d"></script>
+<script src="vendor/maplibre/leaflet-maplibre-gl.js?v=afb18a461d"></script>
+<script src="tiles.js?v=afb18a461d"></script>
+<script src="vendor/xlsx.full.min.js?v=afb18a461d"></script>
+<script src="puzzles-data.js?v=afb18a461d"></script>
+<script src="app.js?v=afb18a461d"></script>
 </body>
 </html>

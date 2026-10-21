@@ -29,7 +29,7 @@ const CONFIG = {
 // Anything from earlier versions (v1 keys, other daily numbering, other puzzle content) is discarded, never resumed.
 const LS = { results: "wis.results.v2", stats: "wis.stats.v2", settings: "wis.settings.v1", custom: "wis.custom.v1" };
 const LEGACY_LS = ["wis.results.v1", "wis.stats.v1"];
-const BUILD = "6fb5222cdf";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
+const BUILD = "afb18a461d";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
 const BANDS = [[100, "🟩", "e-g"], [500, "🟨", "e-y"], [2000, "🟧", "e-o"], [Infinity, "🟥", "e-r"]];   // km thresholds
 
 // ================================================================
@@ -140,7 +140,7 @@ const dailyPool = () => { const days = ALL.filter(p => !p.practiceOnly), real = 
   return CONFIG.includePlaceholderDays || !real.length ? days : real; };
 
 // ================================================================ settings + theme
-const settings = Object.assign({ theme: "system" }, load(LS.settings, {}));
+const settings = Object.assign({ theme: "system", sound: false }, load(LS.settings, {}));
 const saveSettings = () => save(LS.settings, settings);
 const mq = matchMedia("(prefers-color-scheme: dark)");
 const effectiveTheme = () => settings.theme === "system" ? (mq.matches ? "dark" : "light") : settings.theme;
@@ -361,22 +361,34 @@ function showMedia(r, i) {
   img.classList.toggle("hidden", isVid); vid.classList.toggle("hidden", !isVid); mute.classList.toggle("hidden", !isVid); $("#zoomBtn").classList.toggle("hidden", isVid);
   if (isVid) {
     img.removeAttribute("src");
-    vid.muted = true; vid.defaultMuted = true; vid.setAttribute("muted", ""); vid.loop = true; vid.playsInline = true; vid.autoplay = true;
+    // sound follows the player's last choice (settings.sound); autoplay always starts muted-capable for iOS/Android
+    vid.defaultMuted = true; vid.setAttribute("muted", ""); vid.muted = !settings.sound; vid.loop = true; vid.playsInline = true; vid.autoplay = true;
     if (r.poster) vid.poster = r.poster; else vid.removeAttribute("poster");
     vid.setAttribute("aria-label", `${whereQ(state.puzzle)} Round ${i + 1} video`);
     $("#media").style.setProperty("--media-bg", r.poster ? `url("${r.poster}")` : "none");
     vid.onloadedmetadata = fitMedia;
     if (vid.getAttribute("src") !== r.video) { vid.src = r.video; vid.load(); } else fitMedia();
-    vid.setAttribute("aria-label", `Round ${i + 1} video`); setMuteLabel();
-    const pr = vid.play(); if (pr && pr.catch) pr.catch(() => {});   // if autoplay is blocked the poster shows; tapping the video plays it
+    setMuteLabel(); pulseMute();
+    // if the browser refuses autoplay with sound (no user gesture yet), fall back to muted autoplay; the choice is kept
+    const pr = vid.play(); if (pr && pr.catch) pr.catch(() => { if (!vid.muted) { vid.muted = true; setMuteLabel(); pulseMute(); vid.play().catch(() => {}); } });
   } else {
     if (!vid.paused) vid.pause(); vid.removeAttribute("src"); vid.removeAttribute("poster"); vid.load();
     img.classList.add("loading"); img.onload = () => { img.classList.remove("loading"); fitMedia(); }; img.src = r.img; img.alt = `${whereQ(state.puzzle)} Round ${i + 1} photo`;
     $("#media").style.setProperty("--media-bg", `url("${r.img}")`);   // blurred fill behind the contain-fit photo
   }
 }
-function setMuteLabel() { const v = $("#video"), b = $("#muteBtn"); b.textContent = v.muted ? "🔇 Tap to unmute" : "🔊 Sound on"; b.setAttribute("aria-pressed", String(!v.muted)); }
-function toggleMute() { const v = $("#video"); v.muted = !v.muted; if (v.paused) v.play().catch(() => {}); setMuteLabel(); }
+function setMuteLabel() {
+  const v = $("#video"), b = $("#muteBtn");
+  b.innerHTML = v.muted ? `<span class="mi" aria-hidden="true">🔇</span><span class="mt">Tap for sound</span>` : `<span class="mi" aria-hidden="true">🔊</span><span class="mt">Sound on</span>`;
+  b.setAttribute("aria-pressed", String(!v.muted)); b.setAttribute("aria-label", v.muted ? "Sound off. Tap for sound" : "Sound on. Tap to mute");
+  b.classList.toggle("on", !v.muted);
+}
+// a brief pulse when a muted video round starts, so the control is noticed
+function pulseMute() { const b = $("#muteBtn"); b.classList.remove("pulse"); if (!$("#video").muted) return; void b.offsetWidth; b.classList.add("pulse"); }
+function toggleMute() {
+  const v = $("#video"); v.muted = !v.muted; settings.sound = !v.muted; saveSettings();   // remembered across rounds and days
+  if (v.paused) v.play().catch(() => {}); $("#muteBtn").classList.remove("pulse"); setMuteLabel();
+}
 
 function submitGuess() {
   const p = state.puzzle, g = state.game; if (!state.pin || state.busy || g.rounds.length > g.cur) return;
@@ -600,9 +612,24 @@ function menuModal() {
     <button id="mOptin">💌 Feature me<small>Opt in to be a future "She"</small></button>
     <button id="mSettings">⚙️ Settings<small>Theme, load a puzzle file</small></button>
     <button id="mHow">❓ How to play</button>
-    <button id="mAbout">📚 About &amp; photo credits</button></div>`);
+    <button id="mAbout">📚 About &amp; photo credits</button>
+    <button id="mClear">🧹 Clear my game data<small>Progress, scores, streak and settings in this browser</small></button></div>`);
   $("#mArchive").onclick = () => { closeModal(); goArchive(); }; $("#mList").onclick = listModal; $("#mSettings").onclick = settingsModal;
   $("#mHow").onclick = howModal; $("#mAbout").onclick = aboutModal; $("#mOptin").onclick = () => { closeModal(); goOptin(); };
+  $("#mClear").onclick = clearDataModal;
+}
+// "Clear my game data": confirm, then drop every WhereIsShe key from this browser (the marking tool's wis.mark.* is a
+// separate page and is kept), and reload from a clean URL so the app starts fresh on today's daily.
+function wisKeys(store) { const out = []; try { for (let i = 0; i < store.length; i++) { const k = store.key(i); if (k && k.startsWith("wis.") && !k.startsWith("wis.mark.")) out.push(k); } } catch {} return out; }
+function clearGameData() {
+  [localStorage, sessionStorage].forEach(st => { try { wisKeys(st).forEach(k => st.removeItem(k)); } catch {} });
+  location.replace(location.pathname + "?cleared=" + Date.now());
+}
+function clearDataModal() {
+  openModal(`<h2>Clear my game data?</h2>
+    <p>This removes your WhereIsShe progress, scores, streak, stats and settings from this browser. It can't be undone.</p>
+    <div class="confirm-row"><button class="pill-btn" id="clearCancel">Cancel</button><button class="pill-btn primary danger" id="clearConfirm">Clear data</button></div>`);
+  $("#clearCancel").onclick = closeModal; $("#clearConfirm").onclick = clearGameData;
 }
 function settingsModal() {
   const seg = (name, opts, cur) => `<div class="seg" data-set="${name}">${opts.map(([v, l]) => `<button data-v="${v}" class="${cur === v ? "on" : ""}">${l}</button>`).join("")}</div>`;
@@ -677,6 +704,8 @@ $("#video").onclick = () => { const v = $("#video"); if (v.paused) v.play().catc
 $("#zoomBtn").onclick = () => { $("#lightImg").src = $("#photo").src; $("#lightbox").classList.remove("hidden"); };
 $("#lightbox").onclick = () => $("#lightbox").classList.add("hidden");
 $("#optinForm").onsubmit = submitOptin;
+$("#clearLink").onclick = e => { e.preventDefault(); clearDataModal(); };
+if (/[?&]cleared=/.test(location.search)) { try { history.replaceState(null, "", location.pathname + location.hash); } catch {} setTimeout(() => toast("Game data cleared"), 300); }
 $("#fileInput").onchange = e => { const f = [...e.target.files]; if (f.length) handleFiles(f); e.target.value = ""; };
 $$(".tab").forEach(b => b.onclick = () => b.dataset.view === "today" ? goToday() : b.dataset.view === "archive" ? goArchive() : goPractice());
 document.addEventListener("keydown", e => {
