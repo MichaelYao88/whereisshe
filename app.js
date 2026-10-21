@@ -10,15 +10,15 @@ const CONFIG = {
   brand: "WhereIsShe",
   // Public URL used in share links. From file:// we can't share a local path, so a placeholder is used.
   siteUrl: (location.protocol.startsWith("http") ? location.origin + location.pathname : "https://whereisshe.example/"),
-  // Daily No. 1 date. Set this to your launch date. (Prototype: 2 days back so the Archive has all 3 demo days.)
-  dailyEpoch: "2026-10-19",
+  // Daily No. 1 date (launch day).
+  dailyEpoch: "2026-10-21",          // Daily No. 001 = Oct 21 2026 = she-001; the 5 featured days then repeat in order
   rounds: 5,
   maxRoundScore: 5000,
   scoreScaleKm: 1492.7,              // GeoGuessr-style world-map decay: 5000 * e^(-km / 1492.7)
   perfectKm: 0.05,                   // within 50 m = full 5000
   interstitialBeforeResults: true,   // ALWAYS show the ad after guess 5, before the results screen (daily too)
   interstitialSeconds: 5,            // skip countdown
-  includePlaceholderDays: true,      // set false once real featured days exist, to drop the Wikimedia demo days from the daily rotation
+  includePlaceholderDays: false,      // placeholder (non-featured) days are not in the daily rotation
   // Opt-in / removal. Leave the endpoints "" to fall back to a pre-filled email (mailto:).
   optinEndpoint: "",                 // e.g. "https://api.whereisshe.example/optin"  (POST JSON)
   removalEndpoint: "",               // e.g. "https://api.whereisshe.example/remove" (POST JSON)
@@ -77,12 +77,15 @@ const fmtKm = km => km < 1 ? `${Math.round(km * 1000)} m` : km < 10 ? `${km.toFi
 // One row per round. Puzzle-level fields (daily_order, set, placeholder, featured_*, consent_on) are read from the
 // first row of each puzzle_id that has them. See README "Data format".
 const COLS = ["puzzle_id","daily_order","round","set","placeholder","featured_name","featured_handle","featured_ig_url","consent_on",
-  "media_type","image_url","video_url","poster_url","lat","lng","place_name","country","fun_fact","photo_date","credit","license","license_url","source_url"];
+  "media_type","image_url","video_url","poster_url","lat","lng","place_name","country","fun_fact","photo_date","credit","license","license_url","source_url","focus","focus_mobile"];
 const str = v => { v = String(v ?? "").trim(); return v.endsWith(".0") ? v.slice(0, -2) : v; };
 const num = v => { const n = parseFloat(String(v ?? "").replace(/,/g, "")); return isFinite(n) ? n : null; };
 const yes = v => v === true || ["yes", "y", "true", "1"].includes(str(v).toLowerCase());
 const lowerKeys = r => { const o = {}; for (const k in r) o[String(k).trim().toLowerCase()] = r[k]; return o; };
 const handleOf = h => str(h).replace(/^@/, "");
+// focus: where to centre the starting (cropped) view, "x,y" or [x,y] or {x,y} in 0-1 of the media; null = centre
+const parseFocus = v => { if (v == null || v === "") return null; let a = Array.isArray(v) ? v : typeof v === "object" ? [v.x, v.y] : String(v).split(/[ ,;]+/);
+  const x = parseFloat(a[0]), y = parseFloat(a[1]); return isFinite(x) && isFinite(y) ? [Math.min(1, Math.max(0, x)), Math.min(1, Math.max(0, y))] : null; };
 function parseRows(rows) {
   const by = {}, out = [];
   rows.forEach((raw, i) => {
@@ -100,7 +103,8 @@ function parseRows(rows) {
     const lat = num(r.lat), lng = num(r.lng), media = str(r.media_type).toLowerCase() === "video" ? "video" : "image";
     if (lat == null || lng == null || (media === "video" ? !str(r.video_url) : !str(r.image_url))) return;
     p.rounds.push({ n: num(r.round) ?? p.rounds.length + 1, media, img: str(r.image_url), video: str(r.video_url), poster: str(r.poster_url), lat, lng, place: str(r.place_name), country: str(r.country),
-      fact: str(r.fun_fact), credit: str(r.credit), license: str(r.license), licenseUrl: str(r.license_url), sourceUrl: str(r.source_url) });
+      fact: str(r.fun_fact), credit: str(r.credit), license: str(r.license), licenseUrl: str(r.license_url), sourceUrl: str(r.source_url),
+      focus: parseFocus(r.focus), focusMobile: parseFocus(r.focus_mobile) });
   });
   return out.filter(p => {
     p.rounds.sort((a, b) => a.n - b.n);
@@ -223,8 +227,7 @@ function showRound(i, revealed) {
   $("#heroKind").textContent = `Round ${i + 1} / ${CONFIG.rounds}`;
   $("#question").textContent = "Where is she?";   // her name/handle only appears on the Meet her card after round 5
   showMedia(r, i);
-  $("#phTag").classList.toggle("hidden", !p.placeholder);
-  $("#phTag").textContent = r.media === "video" ? "Placeholder clip" : "Placeholder photo";
+  $("#phTag") && $("#phTag").classList.toggle("hidden", !p.placeholder);
   if (p.featured) $("#credit").innerHTML = `<span class="who-hint">👀 Find out who she is after round 5</span>`;
   else $("#credit").textContent = `${r.media === "video" ? "Video" : "Photo"} credit is shown after you guess`;
   setDock("mini");
@@ -234,59 +237,92 @@ function showRound(i, revealed) {
   resetMap(); renderDots();
   if (revealed) revealRound(i, false);
 }
-// ---- per-media layout (v4): the photo/video always fills the whole stage, contained (never cropped), sized by its own
-// shape; the minimap floats over it. We only record the orientation (portrait / landscape / square) for styling + tests.
+// ---- per-media view (v5): "smart fill". Each photo/video starts zoomed to fill the stage as far as possible while
+// still showing at least 80% of the media's width AND height: start scale = min(cover, contain / 0.8), relative to the
+// contained view (scale 1). Any area still uncovered shows the blurred fill. The starting pan centres the round's focus
+// point (focus on desktop, focus_mobile on phones/tablets; default centre). Recomputed per viewport on resize/rotate.
+// Drag pans (mouse on desktop, one finger on touch); pinch / double-tap zoom on touch (scale 1 = fully contained, max 5).
+const MIN_VISIBLE = 0.8;
 const wideStage = matchMedia("(min-width:1101px)");
+const Zoom = (() => {
+  let s = 1, tx = 0, ty = 0, s0 = 1, pts = new Map(), start = null, lastTap = 0, round = null, drag = null;   // lastTap: {t,x,y} of the last clean single tap
+  const box = () => $("#media");
+  const el = () => { const v = $("#video"); return v && !v.classList.contains("hidden") ? v : $("#photo"); };
+  const dims = e => e.tagName === "VIDEO" ? [e.videoWidth, e.videoHeight] : [e.naturalWidth, e.naturalHeight];
+  function geom() { const e = el(), bw = e.offsetWidth, bh = e.offsetHeight, [nw0, nh0] = dims(e), nw = nw0 || bw, nh = nh0 || bh, k = Math.min(bw / nw, bh / nh);
+    const cw = nw * k, ch = nh * k; return { bw, bh, cw, ch, ox: (bw - cw) / 2, oy: (bh - ch) / 2, ready: !!nw0 }; }
+  function clamp() { const g = geom();
+    const ax = (bw, c, o, t) => s * c <= bw ? (bw - s * c) / 2 - s * o : Math.min(-s * o, Math.max(bw - s * (o + c), t));
+    tx = ax(g.bw, g.cw, g.ox, tx); ty = ax(g.bh, g.ch, g.oy, ty); return g; }
+  function apply() {
+    if (s < 1.001) s = 1;
+    const g = clamp(), e = el(), b = box();
+    e.style.transform = s === 1 ? "" : `translate(${tx}px,${ty}px) scale(${s})`;
+    const ovx = s * g.cw > g.bw + 1, ovy = s * g.ch > g.bh + 1;
+    // let the page scroll along any axis the media doesn't overflow
+    b.style.touchAction = ovx && ovy ? "none" : ovx ? "pan-y" : ovy ? "pan-x" : "pan-y";
+    b.classList.toggle("pannable", ovx || ovy); b.classList.toggle("zoomed", Math.abs(s - s0) > 0.01);
+  }
+  // starting view for the current round + viewport
+  function begin(r) {
+    if (r !== undefined) round = r;
+    const e = el(), g = geom(); pts.clear(); start = null; drag = null;
+    if (!g.ready || !g.cw || !g.ch) { s = 1; tx = ty = 0; s0 = 1; e.style.transform = ""; return; }
+    const cover = Math.max(g.bw / g.cw, g.bh / g.ch);
+    s0 = s = Math.max(1, Math.min(cover, 1 / MIN_VISIBLE));
+    const f = (round && (wideStage.matches ? round.focus : (round.focusMobile || round.focus))) || [0.5, 0.5];
+    tx = g.bw / 2 - s * (g.ox + f[0] * g.cw); ty = g.bh / 2 - s * (g.oy + f[1] * g.ch); apply();
+  }
+  function zoomAt(ns, px, py) { ns = Math.max(1, Math.min(5, ns)); tx = px - (px - tx) * (ns / s); ty = py - (py - ty) * (ns / s); s = ns; apply(); }
+  // coordinates relative to the untransformed media box (transform-origin 0 0)
+  const rel = (x, y) => { const b = box().getBoundingClientRect(), e = el(); return { x: x - b.left - e.offsetLeft, y: y - b.top - e.offsetTop }; };
+  function down(e) {
+    if (e.pointerType === "mouse") { if (e.button !== 0) return; drag = { x: e.clientX, y: e.clientY, tx, ty, moved: false }; box().setPointerCapture?.(e.pointerId); box().classList.add("dragging"); e.preventDefault(); return; }
+    if (e.pointerType !== "touch") return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 2) { const [a, b] = [...pts.values()]; start = { d: Math.hypot(a.x - b.x, a.y - b.y), s, tx, ty, m: rel((a.x + b.x) / 2, (a.y + b.y) / 2) }; }
+    else if (pts.size === 1) { start = { pan: true, x: e.clientX, y: e.clientY, tx, ty, t: Date.now(), moved: 0, multi: false };
+      // double-tap = a second quick tap right after a clean single tap (not after a pinch or a drag)
+      if (lastTap && Date.now() - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 40) { const p = rel(e.clientX, e.clientY); dbl(p.x, p.y); lastTap = 0; start.multi = true; } } }
+  function dbl(x, y) { if (Math.abs(s - s0) > 0.01) begin(); else zoomAt(Math.max(2.5, s0 * 2), x, y); }
+  function move(e) {
+    if (drag && e.pointerType === "mouse") { tx = drag.tx + e.clientX - drag.x; ty = drag.ty + e.clientY - drag.y; drag.moved = true; apply(); return; }
+    if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size >= 2 && start && start.d) { e.preventDefault(); start.multi = true; const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), m = rel((a.x + b.x) / 2, (a.y + b.y) / 2);
+      const ns = Math.max(1, Math.min(5, start.s * d / start.d)); tx = m.x - (start.m.x - start.tx) * (ns / start.s); ty = m.y - (start.m.y - start.ty) * (ns / start.s); s = ns; apply(); }
+    else if (pts.size === 1 && start && start.pan) { e.preventDefault(); start.moved = Math.max(start.moved, Math.hypot(e.clientX - start.x, e.clientY - start.y)); tx = start.tx + e.clientX - start.x; ty = start.ty + e.clientY - start.y; apply(); } }
+  function up(e) {
+    if (e.pointerType === "mouse") { drag = null; box().classList.remove("dragging"); return; }
+    const was = start; pts.delete(e.pointerId);
+    if (pts.size === 1) { const [a] = [...pts.values()]; start = { pan: true, x: a.x, y: a.y, tx, ty, t: 0, moved: 99, multi: true }; }
+    else if (!pts.size) { lastTap = was && was.pan && !was.multi && was.moved < 10 && Date.now() - was.t < 300 ? { t: Date.now(), x: e.clientX, y: e.clientY } : 0; start = null; } }
+  function attach() { const b = box(); b.addEventListener("pointerdown", down); b.addEventListener("pointermove", move, { passive: false });
+    ["pointerup", "pointercancel"].forEach(t => b.addEventListener(t, up));
+    b.addEventListener("pointerleave", e => { if (e.pointerType !== "mouse") up(e); });
+    b.addEventListener("dblclick", e => { const p = rel(e.clientX, e.clientY); dbl(p.x, p.y); });
+    // iOS Safari: stop its page-level pinch while a pinch is on the media
+    b.addEventListener("touchmove", e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+    ["gesturestart", "gesturechange"].forEach(t => b.addEventListener(t, e => e.preventDefault()));
+    b.addEventListener("dragstart", e => e.preventDefault());
+    return true; }
+  return { attach, begin, setRound(r) { round = r; }, reset() { s = 1; tx = ty = 0; s0 = 1; pts.clear(); start = null; drag = null; ["#photo", "#video"].forEach(q => { const e = $(q); if (e) e.style.transform = ""; }); },
+           state: () => ({ s, tx, ty, s0 }), zoomAt: (ns, x, y) => zoomAt(ns, x, y), geom, attached: false };
+})();
+Zoom.attached = Zoom.attach();
 function fitMedia() {
   const m = $("#media"), vid = $("#video"), img = $("#photo"), isVid = !vid.classList.contains("hidden");
   const nw = isVid ? vid.videoWidth : img.naturalWidth, nh = isVid ? vid.videoHeight : img.naturalHeight;
   if (!nw || !nh) return;
-  m.dataset.orient = nw / nh > 1.1 ? "landscape" : nw / nh < 0.9 ? "portrait" : "square"; m.dataset.fit = "full";
+  m.dataset.orient = nw / nh > 1.1 ? "landscape" : nw / nh < 0.9 ? "portrait" : "square"; m.dataset.fit = "smart";
+  Zoom.begin();
 }
 wideStage.addEventListener ? wideStage.addEventListener("change", fitMedia) : 0;
-window.addEventListener("resize", () => { fitMedia(); Zoom.reset(); });
-
-// ---- touch pinch-zoom / pan / double-tap on photos (mobile). Starts fully fit; one-finger drags scroll the page
-// until you zoom in (touch-action: pan-y), then pan the photo (touch-action: none). Videos are left alone.
-const Zoom = (() => {
-  let s = 1, tx = 0, ty = 0, pts = new Map(), start = null, lastTap = 0;
-  const el = () => $("#photo"), box = () => $("#media");
-  function geom() { const e = el(), bw = e.offsetWidth, bh = e.offsetHeight, nw = e.naturalWidth || bw, nh = e.naturalHeight || bh, k = Math.min(bw / nw, bh / nh);
-    const cw = nw * k, ch = nh * k; return { bw, bh, cw, ch, ox: (bw - cw) / 2, oy: (bh - ch) / 2 }; }
-  function clamp() { const g = geom();
-    const ax = (bw, c, o, t) => s * c <= bw ? (bw - s * c) / 2 - s * o : Math.min(-s * o, Math.max(bw - s * (o + c), t));
-    tx = ax(g.bw, g.cw, g.ox, tx); ty = ax(g.bh, g.ch, g.oy, ty); }
-  function apply() { if (s <= 1.001) { s = 1; tx = 0; ty = 0; }
-    clamp(); const e = el(); e.style.transform = s === 1 ? "" : `translate(${tx}px,${ty}px) scale(${s})`;
-    box().classList.toggle("zoomed", s > 1); }
-  function zoomAt(ns, px, py) { ns = Math.max(1, Math.min(5, ns)); tx = px - (px - tx) * (ns / s); ty = py - (py - ty) * (ns / s); s = ns; apply(); }
-  // coordinates relative to the untransformed image box (transform-origin 0 0)
-  const rel = (x, y) => { const b = box().getBoundingClientRect(), e = el(); return { x: x - b.left - e.offsetLeft, y: y - b.top - e.offsetTop }; };
-  function down(e) { if (e.pointerType !== "touch" || !box().classList.contains("zoomable")) return;
-    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pts.size === 2) { const [a, b] = [...pts.values()]; start = { d: Math.hypot(a.x - b.x, a.y - b.y), s, tx, ty, m: rel((a.x + b.x) / 2, (a.y + b.y) / 2) }; }
-    else if (pts.size === 1) { start = { pan: true, x: e.clientX, y: e.clientY, tx, ty };
-      const now = Date.now(); if (now - lastTap < 300) { const p = rel(e.clientX, e.clientY); if (s > 1) { s = 1; apply(); } else zoomAt(2.5, p.x, p.y); lastTap = 0; } else lastTap = now; } }
-  function move(e) { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pts.size >= 2 && start && start.d) { e.preventDefault(); const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), m = rel((a.x + b.x) / 2, (a.y + b.y) / 2);
-      const ns = Math.max(1, Math.min(5, start.s * d / start.d)); tx = m.x - (start.m.x - start.tx) * (ns / start.s); ty = m.y - (start.m.y - start.ty) * (ns / start.s); s = ns; apply(); }
-    else if (pts.size === 1 && start && start.pan && s > 1) { e.preventDefault(); tx = start.tx + e.clientX - start.x; ty = start.ty + e.clientY - start.y; apply(); } }
-  function up(e) { pts.delete(e.pointerId); if (pts.size === 1) { const [a] = [...pts.values()]; start = { pan: true, x: a.x, y: a.y, tx, ty }; } else if (!pts.size) start = null; }
-  function attach() { const b = box(); b.addEventListener("pointerdown", down); b.addEventListener("pointermove", move, { passive: false });
-    ["pointerup", "pointercancel", "pointerleave"].forEach(t => b.addEventListener(t, up));
-    // iOS Safari: stop its page-level pinch while a pinch is on the photo
-    b.addEventListener("touchmove", e => { if (b.classList.contains("zoomable") && (e.touches.length > 1 || s > 1)) e.preventDefault(); }, { passive: false });
-    ["gesturestart", "gesturechange"].forEach(t => b.addEventListener(t, e => { if (b.classList.contains("zoomable")) e.preventDefault(); }));
-    return true; }
-  return { attach, reset() { s = 1; tx = 0; ty = 0; pts.clear(); start = null; const e = $("#photo"); if (e) e.style.transform = ""; $("#media") && $("#media").classList.remove("zoomed"); },
-           state: () => ({ s, tx, ty }), zoomAt: (ns, x, y) => zoomAt(ns, x, y), attached: false };
-})();
-Zoom.attached = Zoom.attach();
+let _rz = 0; window.addEventListener("resize", () => { clearTimeout(_rz); _rz = setTimeout(fitMedia, 120); });
 
 // ---- media: photo or looping muted video (autoplay needs muted + playsinline on iOS/Android)
 function showMedia(r, i) {
   const img = $("#photo"), vid = $("#video"), mute = $("#muteBtn"), isVid = r.media === "video";
-  Zoom.reset(); $("#media").classList.toggle("zoomable", !isVid);
+  Zoom.reset(); Zoom.setRound(r); $("#media").classList.add("zoomable");
   img.classList.toggle("hidden", isVid); vid.classList.toggle("hidden", !isVid); mute.classList.toggle("hidden", !isVid); $("#zoomBtn").classList.toggle("hidden", isVid);
   if (isVid) {
     img.removeAttribute("src");
@@ -378,8 +414,7 @@ function renderMeetHer(p) {
       <a class="pill-btn primary mh-btn" id="meetHerLink" href="${esc(f.igUrl)}" target="_blank" rel="noopener">Instagram ↗</a></div>
       <p class="mh-note">Featured with her consent${f.consentOn ? ` (opted in ${esc(f.consentOn)})` : ""}. We never pin a home address.</p>`;
   } else {
-    box.innerHTML = `<div class="mh-k">Meet her</div><p class="mh-note">This is a <b>demo day</b> with placeholder landmark photos from Wikimedia Commons, so there's no featured woman yet.
-      On real days this card links to the featured woman's Instagram.</p><a class="link-btn" href="#optin">Want to be featured? Opt in →</a>`;
+    box.innerHTML = `<div class="mh-k">Meet her</div><p class="mh-note">No featured woman is linked to this day.</p><a class="link-btn" href="#optin">Want to be featured? Opt in →</a>`;
   }
 }
 function drawSummary(p, g) {
@@ -449,7 +484,7 @@ function goPractice(idx) {
   if (idx == null) idx = (dayNumber(todayKey()) + 1) % ALL.length;
   state.practiceIdx = ((idx % ALL.length) + ALL.length) % ALL.length; openPuzzle(ALL[state.practiceIdx]);
 }
-const dayLabel = p => p.featured ? "Featured day · she's revealed after round 5" : "Demo day · placeholder photos";
+const dayLabel = p => p.featured ? "Featured day · she's revealed after round 5" : "Custom day";
 function goArchive() {
   showView("archive"); setHash("#archive");
   const today = todayKey(), last = dayNumber(today), all = load(LS.results, {}), rows = [];
@@ -560,9 +595,8 @@ function howModal() {
    <p>A new daily drops at local midnight. Missed one? It's in the Archive.</p>`);
 }
 function aboutModal() {
-  const rows = ALL.flatMap(p => p.rounds.map(r => ({ p, r })));
-  openModal(`<h2>About &amp; credits</h2><p style="color:var(--muted);font-size:14px">WhereIsShe is a prototype. The demo days use openly licensed landmark photos from Wikimedia Commons as placeholders; real days feature women who opted in.</p>
-    <ol class="credits">${rows.map(({ p, r }) => `<li>${esc(r.place)} (${esc(p.id)}) · ${creditHtml(r)}</li>`).join("")}</ol>
+  // no per-round credits here: they would spoil the answers and name the featured woman before round 5
+  openModal(`<h2>About &amp; credits</h2><p style="color:var(--muted);font-size:14px">WhereIsShe is a prototype. Every day features a woman who opted in; her photos are used with her permission, and she's credited (with a link to her Instagram) on the Meet her card after round 5.</p>
     <p style="font-size:12px;color:var(--muted)">Map data © OpenStreetMap contributors · Basemap: OpenFreeMap / OpenMapTiles (fallback: Esri). Rendering: MapLibre GL JS (BSD-3-Clause). Map library: Leaflet (BSD-2-Clause).</p>`);
 }
 

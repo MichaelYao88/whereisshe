@@ -61,7 +61,7 @@
     <section class="stage" id="stage" aria-label="Round">
       <div class="media" id="media">
         <img id="photo" alt="Where is she? Round photo" draggable="false">
-        <span class="zoom-hint" id="zoomHint">Pinch to zoom · double-tap</span>
+        <span class="zoom-hint" id="zoomHint">Drag to look around · double-tap to zoom</span>
         <!-- Video rounds (media_type "video"): muted + autoplay + loop + playsinline so it autoplays on iOS/Android -->
         <video id="video" class="hidden" muted autoplay loop playsinline webkit-playsinline preload="auto" disablepictureinpicture aria-label="Where is she? Round video"></video>
       </div>
@@ -69,7 +69,6 @@
         <span class="hud-pill tries" id="roundDots"></span>
         <span class="hud-pill running" id="running">0 pts</span>
       </div>
-      <span class="ph-tag" id="phTag" title="Demo landmark photo from Wikimedia Commons, not a featured woman">Placeholder photo</span>
       <button class="zoom-btn" id="zoomBtn" aria-label="View photo full size">⤢</button>
       <button class="mute-btn hidden" id="muteBtn" aria-pressed="false">🔇 Tap to unmute</button>
       <div class="credit" id="credit">Photo credit is shown after you guess</div>
@@ -110,7 +109,7 @@
           <div class="emoji-row" id="emojiRow"></div>
         </div>
       </div>
-      <!-- Shown after the interstitial: the day's featured (opted-in) woman, or a demo-day note -->
+      <!-- Shown after the interstitial: the day's featured (opted-in) woman, or a generic note -->
       <div class="meet-her" id="meetHer"></div>
       <div class="answer">
         <h3>Your 5 guesses</h3>
@@ -159,7 +158,7 @@
 
 <footer class="foot">
   <a href="#optin" id="optinLink">Feature me</a> · <a href="#" id="removeLink">Remove my photos</a><br>
-  WhereIsShe prototype · Demo photos: Wikimedia Commons (see <a href="#" id="aboutLink">credits</a>) · Map © <a href="https://openfreemap.org">OpenFreeMap</a> · © OpenStreetMap contributors
+  WhereIsShe prototype · Photos used with permission (<a href="#" id="aboutLink">about</a>) · Map © <a href="https://openfreemap.org">OpenFreeMap</a> · © OpenStreetMap contributors
 </footer>
 
 <!-- ===== INTERSTITIAL AD (placeholder) =====
