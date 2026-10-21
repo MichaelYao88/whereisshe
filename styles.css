@@ -374,3 +374,7 @@ html.map-open,html.map-open body{overflow:hidden}
   .dock[data-mode="mini"] .leaflet-control-attribution{display:none}
   .credit{max-width:calc(100% - min(40vw,220px) - 28px);bottom:10px}
 }
+
+/* v7: full-score radius cue on the reveal */
+.rv-perfect{display:block;margin-top:5px;font-style:normal;font-size:10.5px;font-weight:800;letter-spacing:.02em;color:#fff;background:#16a34a;border-radius:999px;padding:2px 8px;white-space:nowrap}
+.rv-perfect.hidden{display:none}

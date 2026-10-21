@@ -14,8 +14,8 @@ const CONFIG = {
   dailyEpoch: "2026-10-21",          // Daily No. 001 = Oct 21 2026 = she-001; the 5 featured days then repeat in order
   rounds: 5,
   maxRoundScore: 5000,
-  scoreScaleKm: 1492.7,              // GeoGuessr-style world-map decay: 5000 * e^(-km / 1492.7)
-  perfectKm: 0.05,                   // within 50 m = full 5000
+  scoreScaleKm: 1492.7,              // decay beyond the radius: 5000 * e^(-(km - radius) / 1492.7)
+  fullScoreRadiusKm: 30,             // within this many km of the answer = full 5000 ("Perfect!")
   interstitialBeforeResults: true,   // ALWAYS show the ad after guess 5, before the results screen (daily too)
   interstitialSeconds: 5,            // skip countdown
   includePlaceholderDays: false,      // placeholder (non-featured) days are not in the daily rotation
@@ -29,7 +29,7 @@ const CONFIG = {
 // Anything from earlier versions (v1 keys, other daily numbering, other puzzle content) is discarded, never resumed.
 const LS = { results: "wis.results.v2", stats: "wis.stats.v2", settings: "wis.settings.v1", custom: "wis.custom.v1" };
 const LEGACY_LS = ["wis.results.v1", "wis.stats.v1"];
-const BUILD = "ce65b82775";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
+const BUILD = "fc8673d5f6";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
 const BANDS = [[100, "🟩", "e-g"], [500, "🟨", "e-y"], [2000, "🟧", "e-o"], [Infinity, "🟥", "e-r"]];   // km thresholds
 
 // ================================================================
@@ -80,20 +80,28 @@ function haversineKm(a, b) {
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
-const scoreFor = km => km <= CONFIG.perfectKm ? CONFIG.maxRoundScore : Math.round(CONFIG.maxRoundScore * Math.exp(-km / CONFIG.scoreScaleKm));
+// full score inside the radius, then the usual exponential decay measured from the radius edge (continuous at the edge)
+const isPerfect = km => km <= CONFIG.fullScoreRadiusKm;
+const scoreFor = km => isPerfect(km) ? CONFIG.maxRoundScore : Math.round(CONFIG.maxRoundScore * Math.exp(-(km - CONFIG.fullScoreRadiusKm) / CONFIG.scoreScaleKm));
 const band = km => BANDS.find(b => km < b[0]);
 const fmtKm = km => km < 1 ? `${Math.round(km * 1000)} m` : km < 10 ? `${km.toFixed(1)} km` : `${n0(km)} km`;
 
 // ================================================================ data (mirrors build.py)
 // One row per round. Puzzle-level fields (daily_order, set, placeholder, featured_*, consent_on) are read from the
 // first row of each puzzle_id that has them. See README "Data format".
-const COLS = ["puzzle_id","daily_order","round","set","placeholder","featured_name","featured_handle","featured_ig_url","consent_on",
+const COLS = ["puzzle_id","daily_order","round","set","placeholder","featured_name","featured_handle","featured_ig_url","featured_pronoun","consent_on",
   "media_type","image_url","video_url","poster_url","lat","lng","place_name","country","fun_fact","photo_date","credit","license","license_url","source_url","focus","focus_mobile"];
 const str = v => { v = String(v ?? "").trim(); return v.endsWith(".0") ? v.slice(0, -2) : v; };
 const num = v => { const n = parseFloat(String(v ?? "").replace(/,/g, "")); return isFinite(n) ? n : null; };
 const yes = v => v === true || ["yes", "y", "true", "1"].includes(str(v).toLowerCase());
 const lowerKeys = r => { const o = {}; for (const k in r) o[String(k).trim().toLowerCase()] = r[k]; return o; };
 const handleOf = h => str(h).replace(/^@/, "");
+// per-day wording: featured_pronoun "she" (default) or "he" (anything else falls back to "they")
+const PRONOUNS = { she: { subj: "she", obj: "her", noun: "woman" }, he: { subj: "he", obj: "him", noun: "man" }, they: { subj: "they", obj: "them", noun: "person" } };
+const pronounOf = v => { v = str(v).toLowerCase(); return v === "he" || v === "him" ? "he" : v === "they" || v === "them" ? "they" : "she"; };
+const W = p => PRONOUNS[(p && p.featured && p.featured.pronoun) || "she"];
+const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
+const whereQ = p => { const w = W(p); return `Where ${w.subj === "they" ? "are" : "is"} ${w.subj}?`; };
 // focus: where to centre the starting (cropped) view, "x,y" or [x,y] or {x,y} in 0-1 of the media; null = centre
 const parseFocus = v => { if (v == null || v === "") return null; let a = Array.isArray(v) ? v : typeof v === "object" ? [v.x, v.y] : String(v).split(/[ ,;]+/);
   const x = parseFloat(a[0]), y = parseFloat(a[1]); return isFinite(x) && isFinite(y) ? [Math.min(1, Math.max(0, x)), Math.min(1, Math.max(0, y))] : null; };
@@ -109,7 +117,7 @@ function parseRows(rows) {
     if (yes(r.placeholder)) p.placeholder = true;
     if (!p.featured && handleOf(r.featured_handle)) {
       const h = handleOf(r.featured_handle);
-      p.featured = { name: str(r.featured_name), handle: h, igUrl: str(r.featured_ig_url) || `https://www.instagram.com/${encodeURIComponent(h)}/`, consentOn: str(r.consent_on) };
+      p.featured = { name: str(r.featured_name), handle: h, igUrl: str(r.featured_ig_url) || `https://www.instagram.com/${encodeURIComponent(h)}/`, consentOn: str(r.consent_on), pronoun: pronounOf(r.featured_pronoun) };
     }
     const lat = num(r.lat), lng = num(r.lng), media = str(r.media_type).toLowerCase() === "video" ? "video" : "image";
     if (lat == null || lng == null || (media === "video" ? !str(r.video_url) : !str(r.image_url))) return;
@@ -252,10 +260,10 @@ function openPuzzle(p) {
 function showRound(i, revealed) {
   const p = state.puzzle, g = state.game, r = p.rounds[i]; g.cur = i; state.pin = null;
   $("#heroKind").textContent = `Round ${i + 1} / ${CONFIG.rounds}`;
-  $("#question").textContent = "Where is she?";   // her name/handle only appears on the Meet her card after round 5
+  $("#question").textContent = whereQ(p);   // name/handle only appears on the Meet her/him card after round 5
   showMedia(r, i);
   $("#phTag") && $("#phTag").classList.toggle("hidden", !p.placeholder);
-  if (p.featured) $("#credit").innerHTML = `<span class="who-hint">👀 Find out who she is after round 5</span>`;
+  if (p.featured) $("#credit").innerHTML = `<span class="who-hint">👀 Find out who ${W(p).subj} ${W(p).subj === "they" ? "are" : "is"} after round 5</span>`;
   else $("#credit").textContent = `${r.media === "video" ? "Video" : "Photo"} credit is shown after you guess`;
   setDock("mini");
   $("#mapHint").textContent = compact.matches ? "Tap to open the map" : "Click the map to drop your pin";
@@ -355,6 +363,7 @@ function showMedia(r, i) {
     img.removeAttribute("src");
     vid.muted = true; vid.defaultMuted = true; vid.setAttribute("muted", ""); vid.loop = true; vid.playsInline = true; vid.autoplay = true;
     if (r.poster) vid.poster = r.poster; else vid.removeAttribute("poster");
+    vid.setAttribute("aria-label", `${whereQ(state.puzzle)} Round ${i + 1} video`);
     $("#media").style.setProperty("--media-bg", r.poster ? `url("${r.poster}")` : "none");
     vid.onloadedmetadata = fitMedia;
     if (vid.getAttribute("src") !== r.video) { vid.src = r.video; vid.load(); } else fitMedia();
@@ -362,7 +371,7 @@ function showMedia(r, i) {
     const pr = vid.play(); if (pr && pr.catch) pr.catch(() => {});   // if autoplay is blocked the poster shows; tapping the video plays it
   } else {
     if (!vid.paused) vid.pause(); vid.removeAttribute("src"); vid.removeAttribute("poster"); vid.load();
-    img.classList.add("loading"); img.onload = () => { img.classList.remove("loading"); fitMedia(); }; img.src = r.img; img.alt = `Round ${i + 1} photo`;
+    img.classList.add("loading"); img.onload = () => { img.classList.remove("loading"); fitMedia(); }; img.src = r.img; img.alt = `${whereQ(state.puzzle)} Round ${i + 1} photo`;
     $("#media").style.setProperty("--media-bg", `url("${r.img}")`);   // blurred fill behind the contain-fit photo
   }
 }
@@ -386,11 +395,12 @@ function revealRound(i, animate) {
   drawReveal(gr, r, animate);
   $("#rvPoints").textContent = n0(gr.pts);
   $("#rvDist").textContent = `${band(gr.dist)[1]} ${fmtKm(gr.dist)} away`;
+  const perfect = $("#rvPerfect"); perfect.textContent = `Perfect! within ${CONFIG.fullScoreRadiusKm} km`; perfect.classList.toggle("hidden", !isPerfect(gr.dist));
   $("#rvPlace").textContent = `📍 ${r.place}${r.country ? ", " + r.country : ""}`;
   $("#rvFact").innerHTML = r.fact ? `<b>Fun fact:</b> ${esc(r.fact)}` : "";
   // Featured days: no handle / IG link until the Meet her card after round 5
   $("#credit").innerHTML = $("#rvCredit").innerHTML = state.puzzle.featured
-    ? `${r.media === "video" ? "Video" : "Photo"} used with permission · <span class="who-hint">find out who she is after round 5</span>` : creditHtml(r);
+    ? `${r.media === "video" ? "Video" : "Photo"} used with permission · <span class="who-hint">find out who ${W(state.puzzle).subj} ${W(state.puzzle).subj === "they" ? "are" : "is"} after round 5</span>` : creditHtml(r);
   $("#mapHint").classList.add("gone");
   const nb = $("#nextRoundBtn");
   nb.textContent = i + 1 >= CONFIG.rounds ? "See results →" : "Next round →";
@@ -434,14 +444,14 @@ function showResults(scroll) {
   if (scroll) setTimeout(() => $("#result").scrollIntoView({ behavior: "smooth", block: "start" }), 80);
 }
 function renderMeetHer(p) {
-  const box = $("#meetHer"), f = p.featured;
+  const box = $("#meetHer"), f = p.featured, w = W(p);
   if (f) {
-    box.innerHTML = `<div class="mh-k">Meet her</div><div class="mh-row"><div class="mh-av">${esc((f.name || f.handle).slice(0, 1).toUpperCase())}</div>
+    box.innerHTML = `<div class="mh-k">Meet ${w.obj}</div><div class="mh-row"><div class="mh-av">${esc((f.name || f.handle).slice(0, 1).toUpperCase())}</div>
       <div><div class="mh-name">${esc(f.name || "@" + f.handle)}</div><div class="mh-handle">@${esc(f.handle)}</div></div>
       <a class="pill-btn primary mh-btn" id="meetHerLink" href="${esc(f.igUrl)}" target="_blank" rel="noopener">Instagram ↗</a></div>
-      <p class="mh-note">Featured with her consent${f.consentOn ? ` (opted in ${esc(f.consentOn)})` : ""}. We never pin a home address.</p>`;
+      <p class="mh-note">Featured with ${w.subj === "she" ? "her" : w.subj === "he" ? "his" : "their"} consent${f.consentOn ? ` (opted in ${esc(f.consentOn)})` : ""}. We never pin a home address.</p>`;
   } else {
-    box.innerHTML = `<div class="mh-k">Meet her</div><p class="mh-note">No featured woman is linked to this day.</p><a class="link-btn" href="#optin">Want to be featured? Opt in →</a>`;
+    box.innerHTML = `<div class="mh-k">Meet ${w.obj}</div><p class="mh-note">No featured ${w.noun} is linked to this day.</p><a class="link-btn" href="#optin">Want to be featured? Opt in →</a>`;
   }
 }
 function drawSummary(p, g) {
@@ -477,7 +487,7 @@ function currentStreak() { const s = load(LS.stats, null); if (!s) return 0; con
 // ================================================================ sharing
 function shareUrl() { return CONFIG.siteUrl.replace(/#.*$/, "") + linkHash(); }
 function shareTitle() { return state.mode === "practice" ? `${CONFIG.brand} practice` : `${CONFIG.brand} #${pad3(dayNumber(state.dateKey) + 1)}`; }
-function challengeText() { return `${shareTitle()} 📍\nFive photos. One woman. Where in the world is she?\n${shareUrl()}`; }
+function challengeText() { return `${shareTitle()} 📍\nFive photos. One ${W(state.puzzle).noun}. ${whereQ(state.puzzle).replace("Where ", "Where in the world ")}\n${shareUrl()}`; }
 function resultText() {
   const g = getResult(); if (!g || !g.done) return "";
   return `${shareTitle()} 📍 ${n0(totalOf(g))}/${n0(maxTotal())}\n${g.rounds.map(x => band(x.dist)[1]).join("")}\n${shareUrl()}`;
@@ -511,7 +521,7 @@ function goPractice(idx) {
   if (idx == null) idx = (dayNumber(todayKey()) + 1) % ALL.length;
   state.practiceIdx = ((idx % ALL.length) + ALL.length) % ALL.length; openPuzzle(ALL[state.practiceIdx]);
 }
-const dayLabel = p => p.featured ? "Featured day · she's revealed after round 5" : "Custom day";
+const dayLabel = p => p.featured ? `Featured day · ${W(p).subj === "they" ? "they're" : W(p).subj + "'s"} revealed after round 5` : "Custom day";
 function goArchive() {
   showView("archive"); setHash("#archive");
   const today = todayKey(), last = dayNumber(today), rows = [];
@@ -519,7 +529,7 @@ function goArchive() {
     const key = keyFromDay(n), p = puzzleForDay(n), mine = savedFor(keyFor("archive", key, p), p);
     const badge = mine && mine.done ? `<span class="ar done">${n0(mine.total ?? totalOf(mine))}</span>` : mine && mine.rounds?.length ? `<span class="ar">${mine.rounds.length}/5</span>` : `<span class="ar">Play →</span>`;
     rows.push(`<li><button class="arch ${n === last ? "today" : ""}" data-key="${key}"><span class="an">#${pad3(n + 1)}<small>${n === last ? "Today" : prettyDate(key).replace(/, \d{4}$/, "")}</small></span>
-      <span class="aq">📍 Where is she?<small>${esc(dayLabel(p))}</small></span>${badge}</button></li>`);
+      <span class="aq">📍 ${whereQ(p)}<small>${esc(dayLabel(p))}</small></span>${badge}</button></li>`);
   }
   $("#archiveList").innerHTML = rows.join("");
   $$(".arch").forEach(b => b.onclick = () => goDate(b.dataset.key));
@@ -614,15 +624,15 @@ function listModal() {
 }
 function howModal() {
   openModal(`<h2>How to play</h2>
-   <p>Every day there are <b>5 photos</b> of the same woman somewhere in the world. For each one, tap the map to drop your pin, then hit <b>Guess</b>.</p>
-   <p>You'll see where she really was, how far off you were, and your points: up to <b>5,000</b> per round (closer = more), so <b>25,000</b> max.</p>
+   <p>Every day there are <b>5 photos</b> of the same person somewhere in the world. For each one, tap the map to drop your pin, then hit <b>Guess</b>.</p>
+   <p>You'll see where they really were, how far off you were, and your points: up to <b>5,000</b> per round, so <b>25,000</b> max. Anywhere within <b>${CONFIG.fullScoreRadiusKm} km</b> of the real spot is a perfect 5,000; further out, the closer you are the more you score.</p>
    <p>🟩 under 100 km · 🟨 under 500 km · 🟧 under 2,000 km · 🟥 further.</p>
    <p>Everyone featured has opted in. We never pin a home address.</p>
    <p>A new daily drops at local midnight. Missed one? It's in the Archive.</p>`);
 }
 function aboutModal() {
   // no per-round credits here: they would spoil the answers and name the featured woman before round 5
-  openModal(`<h2>About &amp; credits</h2><p style="color:var(--muted);font-size:14px">WhereIsShe is a prototype. Every day features a woman who opted in; her photos are used with her permission, and she's credited (with a link to her Instagram) on the Meet her card after round 5.</p>
+  openModal(`<h2>About &amp; credits</h2><p style="color:var(--muted);font-size:14px">WhereIsShe is a prototype. Every day features someone who opted in; their photos are used with their permission, and they're credited (with a link to their Instagram) on the Meet card after round 5.</p>
     <p style="font-size:12px;color:var(--muted)">Map data © OpenStreetMap contributors · Basemap: OpenFreeMap / OpenMapTiles (fallback: Esri). Rendering: MapLibre GL JS (BSD-3-Clause). Map library: Leaflet (BSD-2-Clause).</p>`);
 }
 
@@ -644,7 +654,7 @@ async function handleFiles(files) {
   } catch (e) { console.error(e); toast("Couldn't read that file: " + e.message); }
 }
 window.WISLoadFiles = handleFiles;
-window.WIS = { Zoom, fitMedia, summaryMap: () => summaryMap, CONFIG, dailyPool, dockMode, scoreFor, haversineKm, band, resultText, puzzles: () => ALL, map: () => map };   // test hooks
+window.WIS = { Zoom, fitMedia, summaryMap: () => summaryMap, CONFIG, dailyPool, dockMode, scoreFor, isPerfect, haversineKm, band, resultText, puzzles: () => ALL, map: () => map };   // test hooks
 
 // ================================================================ wire up
 $("#guessBtn").onclick = submitGuess; $("#nextRoundBtn").onclick = nextRound; $("#nextBtn").onclick = next;
