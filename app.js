@@ -29,12 +29,26 @@ const CONFIG = {
   removalEndpoint: "",               // e.g. "https://api.whereisshe.example/remove" (POST JSON)
   contactEmail: "hello@whereisshe.example",   // PLACEHOLDER: set a real inbox before launch
   // Map tiles: see tiles.js (OpenFreeMap vector basemap via MapLibre, Esri raster fallback; no API keys).
+  // ---- v11 (see SETUP.md). All OFF on the live site until the Supabase migration is applied and RLS is verified.
+  // backend: PUBLIC values only. anonKey = the publishable key (sb_publishable_…) or the legacy anon JWT. NEVER a sb_secret_ key.
+  backend: { enabled: false, supabaseUrl: "https://xhaduveumhtikwoekxdi.supabase.co", anonKey: "sb_publishable_Aoj_rFQBnwqahuEpCJFqww_9umiFFxx" },
+  // Lemon Squeezy checkout link of the Premium variant (Share -> checkout URL), e.g. https://STORE.lemonsqueezy.com/buy/<uuid>.
+  // testMode: true while using the store's test-mode link (shows a "no real charge" note); set false after going live.
+  premium: { enabled: false, testMode: true, checkoutUrl: "https://mikelyaps.lemonsqueezy.com/checkout/buy/ca1efbfa-7ab8-4fe6-b96a-694c1f5691fa", price: "" },   // price: display text, e.g. "US$2.99 / month" (TBD by Michael)
+  // "Feature me" v11 form (links and/or uploads). Login required; limits enforced by the submit_feature() SQL function.
+  submissions: { enabled: false, maxFiles: 5, maxFileMB: 25, maxLinks: 10 },
+  // Google AdSense for the post-round-5 unit. Never loaded for Premium players. slot "" = keep the placeholder.
+  ads: { enabled: false, client: "ca-pub-5196178239625142", slot: "" },
 };
+// Tests only (never on the live site): a localhost page may override CONFIG, e.g. to point at the mock backend.
+(function mergeTestConfig(dst, src) { if (!src || !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
+  for (const k in src) { if (src[k] && typeof src[k] === "object" && !Array.isArray(src[k]) && dst[k] && typeof dst[k] === "object") mergeTestConfig(dst[k], src[k]); else dst[k] = src[k]; } })(CONFIG, window.__WIS_TEST_CONFIG__);
 // v6: saved progress is namespaced by mode + day + puzzle id + a hash of the puzzle's content, under fresh v2 keys.
 // Anything from earlier versions (v1 keys, other daily numbering, other puzzle content) is discarded, never resumed.
-const LS = { results: "wis.results.v2", stats: "wis.stats.v2", settings: "wis.settings.v1", custom: "wis.custom.v1", welcome: "wis.welcome.v1", visits: "wis.visits.v1", promo: "wis.promo.v1" };
+const LS = { results: "wis.results.v2", stats: "wis.stats.v2", settings: "wis.settings.v1", custom: "wis.custom.v1", welcome: "wis.welcome.v1", visits: "wis.visits.v1", promo: "wis.promo.v1",
+  auth: "wis.auth.v1", sync: "wis.sync.v1", premium: "wis.premium.v1" };   // v11: Supabase session (cleared by "Clear my game data" = signed out here), sync status, Premium cache
 const LEGACY_LS = ["wis.results.v1", "wis.stats.v1"];
-const BUILD = "7632a6d25a";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
+const BUILD = "7754b1982b";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
 const BANDS = [[100, "🟩", "e-g"], [500, "🟨", "e-y"], [2000, "🟧", "e-o"], [Infinity, "🟥", "e-r"]];   // km thresholds
 
 // ================================================================
@@ -148,7 +162,7 @@ const dailyPool = () => { const days = ALL.filter(p => !p.practiceOnly), real = 
 
 // ================================================================ settings + theme
 const settings = Object.assign({ theme: "system", sound: false }, load(LS.settings, {}));
-const saveSettings = () => save(LS.settings, settings);
+const saveSettings = () => { settings._at = Date.now(); save(LS.settings, settings); };   // _at: newest settings win when syncing
 const mq = matchMedia("(prefers-color-scheme: dark)");
 const effectiveTheme = () => settings.theme === "system" ? (mq.matches ? "dark" : "light") : settings.theme;
 function applyTheme() {
@@ -491,6 +505,7 @@ function submitGuess() {
     if (!isPreview()) CommunityStats.submit({ puzzleId: p.id, day: state.dateKey, mode: state.mode, total: g.total, rounds: g.rounds });
   }
   setResult(g); revealRound(g.cur, true);
+  if (g.done && !isPreview()) cloudAfterGame();   // v11: sync after each finished game (signed-in players only)
 }
 function revealRound(i, animate) {
   const p = state.puzzle, g = state.game, r = p.rounds[i], gr = g.rounds[i];
@@ -516,14 +531,14 @@ function nextRound() {
   if (g.cur + 1 < CONFIG.rounds) { showRound(g.cur + 1, false); $("#stage").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
   // after guess 5: interstitial ad, THEN results (daily included)
   const finish = () => { g.adSeen = true; setResult(g); showResults(true); };
-  if (CONFIG.interstitialBeforeResults && !g.adSeen) showInterstitial(finish); else finish();
+  if (CONFIG.interstitialBeforeResults && !g.adSeen && !isPremium()) showInterstitial(finish); else finish();   // Premium: no ad
 }
 
 // ================================================================ interstitial
 function showInterstitial(done) {
   const ov = $("#interstitial"), btn = $("#skipAd"); let s = CONFIG.interstitialSeconds; state.busy = true;
   ov.classList.remove("hidden"); btn.disabled = true; btn.textContent = `Skip in ${s}`;
-  // ADSENSE / GAM: request + render the interstitial creative here.
+  renderInterstitialAd();   // AdSense unit when CONFIG.ads is on (placeholder otherwise / if blocked)
   const t = setInterval(() => { s--; if (s <= 0) { clearInterval(t); btn.disabled = false; btn.textContent = "See results ✕"; } else btn.textContent = `Skip in ${s}`; }, 1000);
   btn.onclick = () => { if (btn.disabled) return; clearInterval(t); ov.classList.add("hidden"); state.busy = false; done(); };
 }
@@ -580,6 +595,8 @@ async function renderCommunity(p, total) {
 function recordStats(g) {
   const s = load(LS.stats, { played: 0, sum: 0, best: 0, streak: 0, bestStreak: 0, lastDay: null, dist: {} });
   const dn = dayNumber(state.dateKey); if (s.lastDay === dn) return;
+  if (!s.days) s.days = s.played ? ledgerFromResults(load(LS.results, {})) : {};   // v11 per-day ledger: lets two devices' stats merge
+  s.days[dn] = g.total;
   s.streak = s.lastDay === dn - 1 ? s.streak + 1 : 1; s.bestStreak = Math.max(s.bestStreak || 0, s.streak); s.lastDay = dn; s.played++;
   s.sum += g.total; s.best = Math.max(s.best, g.total);
   const k = g.total >= 20000 ? "20k–25k" : g.total >= 15000 ? "15k–20k" : g.total >= 10000 ? "10k–15k" : g.total >= 5000 ? "5k–10k" : "0–5k";
@@ -646,7 +663,7 @@ function goArchive() {
 function next() { if (state.mode === "practice") goPractice(state.practiceIdx + 1); else if (state.mode === "archive") goArchive(); else if (isPreview()) location.href = "schedule.html"; else goPractice(); }
 
 // ================================================================ opt-in ("Feature me") + removal
-function goOptin() { showView("optin"); setHash("#optin"); window.scrollTo({ top: 0 }); }
+function goOptin() { showView("optin"); setHash("#optin"); setupFeatureForm(); window.scrollTo({ top: 0 }); }
 const mailto = (subject, body) => `mailto:${CONFIG.contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 async function postOrMail(endpoint, payload, subject, body) {
   window.__lastSubmission = { endpoint, payload, mailto: mailto(subject, body) };
@@ -691,7 +708,7 @@ function removalModal() {
 }
 
 // ================================================================ modals
-function openModal(html) { $("#modalBody").innerHTML = html; $("#modal").classList.remove("hidden"); }
+function openModal(html, kind = "") { $("#modalBody").innerHTML = html; $("#modal").dataset.kind = kind; $("#modal").classList.remove("hidden"); }
 function closeModal() { $("#modal").classList.add("hidden"); }
 function statsModal() {
   const s = load(LS.stats, { played: 0, sum: 0, best: 0, dist: {} });
@@ -699,13 +716,17 @@ function statsModal() {
   const dist = s.played ? order.map(k => { const v = s.dist?.[k] || 0; return `<div class="crow"><span class="cn">${k}</span><span class="cb"><i style="width:${v / Math.max(1, s.played) * 100}%"></i></span><span class="cp">${v}</span></div>`; }).join("")
     : "<p style='color:var(--muted)'>Play today's puzzle to start your stats.</p>";
   openModal(`<h2>Your stats</h2><div class="stat-grid"><div><b>${s.played}</b><span>Played</span></div><div><b>${s.played ? n0(s.sum / s.played) : "–"}</b><span>Average</span></div><div><b>${currentStreak()}</b><span>Streak</span></div><div><b>${s.best ? n0(s.best) : "–"}</b><span>Best</span></div></div>
-    <h3>Daily scores</h3>${dist}<p style="font-size:12px;color:var(--muted)">Only today's daily counts. Stats live in this browser (localStorage).</p>`);
+    <h3>Daily scores</h3>${dist}<p style="font-size:12px;color:var(--muted)">Only today's daily counts. ${Cloud.user ? "Stats live in this browser and sync to your account." : "Stats live in this browser (localStorage)."}</p>
+    ${accountsOn() && !Cloud.user ? `<button class="link-btn" id="statsSignIn" type="button">☁️ Sign in to keep them on all your devices</button>` : ""}`);
+  if ($("#statsSignIn")) $("#statsSignIn").onclick = () => accountModal();
 }
 function menuModal() {
   openModal(`<h2>Menu</h2><div class="menu-list">
     <button id="mArchive">🗓 Archive<small>Every past daily</small></button>
     <button id="mList">🗂 All puzzles (practice)<small>Pick any day to play</small></button>
-    <button id="mOptin">💌 Feature me<small>Opt in to be a future "She"</small></button>
+    ${accountsOn() ? `<button id="mAccount">${Cloud.user ? "👤 Your account" : "👤 Sign in"}<small>${Cloud.user ? esc(Cloud.user.email || "") : "Optional: sync stats across devices"}</small></button>` : ""}
+    ${premiumOn() ? `<button id="mPremium">⭐ ${isPremium() ? "Premium" : "Go Premium"}<small>${isPremium() ? "No ads · priority review" : "No ads + priority review for submissions"}</small></button>` : ""}
+    <button id="mOptin">💌 Feature me<small>${submissionsOn() ? "Submit your own photos to be featured" : 'Opt in to be a future "She"'}</small></button>
     <button id="mSettings">⚙️ Settings<small>Theme, load a puzzle file</small></button>
     <button id="mHow">❓ How to play</button>
     <button id="mAbout">📚 About &amp; photo credits</button>
@@ -713,6 +734,8 @@ function menuModal() {
   $("#mArchive").onclick = () => { closeModal(); goArchive(); }; $("#mList").onclick = listModal; $("#mSettings").onclick = settingsModal;
   $("#mHow").onclick = howModal; $("#mAbout").onclick = aboutModal; $("#mOptin").onclick = () => { closeModal(); goOptin(); };
   $("#mClear").onclick = clearDataModal;
+  if ($("#mAccount")) $("#mAccount").onclick = () => accountModal();
+  if ($("#mPremium")) $("#mPremium").onclick = premiumModal;
 }
 // "Clear my game data": confirm, then drop every WhereIsShe key from this browser (the marking tool's wis.mark.* is a
 // separate page and is kept), and reload from a clean URL so the app starts fresh on today's daily.
@@ -759,7 +782,7 @@ function clearGameData() {
 }
 function clearDataModal() {
   openModal(`<h2>Clear my game data?</h2>
-    <p>This removes your WhereIsShe progress, scores, streak, stats and settings from this browser. It can't be undone.</p>
+    <p>This removes your WhereIsShe progress, scores, streak, stats and settings from this browser${Cloud.user ? " and signs you out here (your account's synced copy stays)" : ""}. It can't be undone.</p>
     <div class="confirm-row"><button class="pill-btn" id="clearCancel">Cancel</button><button class="pill-btn primary danger" id="clearConfirm">Clear data</button></div>`);
   $("#clearCancel").onclick = closeModal; $("#clearConfirm").onclick = clearGameData;
 }
@@ -792,7 +815,403 @@ function howModal() {
 function aboutModal() {
   // no per-round credits here: they would spoil the answers and name the featured woman before round 5
   openModal(`<h2>About &amp; credits</h2><p style="color:var(--muted);font-size:14px">WhereIsShe is a prototype. Every day features someone who opted in; their photos are used with their permission, and they're credited (with a link to their Instagram) on the Meet card after round 5.</p>
+    <p style="font-size:13px"><a href="terms.html" target="_blank" rel="noopener">Terms</a> · <a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="refund.html" target="_blank" rel="noopener">Refunds</a></p>
     <p style="font-size:12px;color:var(--muted)">Map data © OpenStreetMap contributors · Basemap: OpenFreeMap / OpenMapTiles (fallback: Esri). Rendering: MapLibre GL JS (BSD-3-Clause). Map library: Leaflet (BSD-2-Clause).</p>`);
+}
+
+// ================================================================ v11: accounts (cross-device sync), Premium, ads, Feature me
+// Everything here is behind CONFIG flags and does nothing (no network, no extra scripts, no UI) while they're off.
+const isLocalHost = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+const accountsOn = () => !!(CONFIG.backend.enabled && CONFIG.backend.supabaseUrl && CONFIG.backend.anonKey && !/^sb_secret_/i.test(CONFIG.backend.anonKey));
+const premiumOn = () => accountsOn() && !!CONFIG.premium.enabled;
+const submissionsOn = () => accountsOn() && !!CONFIG.submissions.enabled;
+const adsOn = () => !!(CONFIG.ads.enabled && CONFIG.ads.client);
+if (/^sb_secret_/i.test(CONFIG.backend.anonKey || "")) console.error("WhereIsShe: CONFIG.backend.anonKey is a SECRET key. Never ship it; use the publishable key. Accounts disabled.");
+const vq = BUILD.startsWith("__") ? "" : "?v=" + BUILD;
+const scriptP = {};
+function loadScript(src, attrs = {}) {
+  return scriptP[src] || (scriptP[src] = new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.async = true;
+    Object.entries(attrs).forEach(([k, v]) => s.setAttribute(k, v)); s.onload = () => res(); s.onerror = () => { delete scriptP[src]; s.remove(); rej(new Error("couldn't load " + src)); }; document.head.appendChild(s); }));
+}
+const Cloud = { sb: null, session: null, user: null, profile: null, state: "off", syncing: null, again: false, watch: 0 };
+
+// ---- merging (local-first: localStorage stays the source of truth; the cloud row is merged in, never blindly copied)
+const statsDefault = () => ({ played: 0, sum: 0, best: 0, streak: 0, bestStreak: 0, lastDay: null, dist: {}, days: {} });
+const distKey = t => t >= 20000 ? "20k–25k" : t >= 15000 ? "15k–20k" : t >= 10000 ? "10k–15k" : t >= 5000 ? "5k–10k" : "0–5k";
+// pre-v11 stats have no per-day ledger: rebuild it from saved dailies that were finished on their own day (= counted)
+function ledgerFromResults(results) {
+  const days = {};
+  for (const [k, r] of Object.entries(results || {})) {
+    const m = k.match(/^d:(\d{4}-\d{2}-\d{2}):/); if (!m || !r || !r.done || !r.at || !Array.isArray(r.rounds)) continue;
+    if (keyOf(new Date(r.at)) !== m[1]) continue;
+    const t = isFinite(r.total) ? r.total : r.rounds.reduce((s, x) => s + (x.pts || 0), 0), dn = dayNumber(m[1]);
+    days[dn] = Math.max(days[dn] ?? -1, t);
+  }
+  return days;
+}
+const withLedger = (s, results) => s && s.played && !s.days ? { ...s, days: ledgerFromResults(results) } : s;
+function statsFromDays(days) {
+  const s = statsDefault(); let run = 0, prev = null;
+  Object.keys(days).map(Number).filter(isFinite).sort((a, b) => a - b).forEach(d => { const t = +days[d];
+    s.days[d] = t; s.played++; s.sum += t; s.best = Math.max(s.best, t); s.dist[distKey(t)] = (s.dist[distKey(t)] || 0) + 1;
+    run = prev !== null && d === prev + 1 ? run + 1 : 1; s.bestStreak = Math.max(s.bestStreak, run); prev = d; });
+  s.streak = run; s.lastDay = prev; return s;
+}
+// union of per-day scores (a day played on two devices counts once, best score), streak recomputed over the union
+// (day 1 on the phone + day 2 on the laptop = a 2-day streak); best / best streak / legacy counters never go down.
+function mergeStats(a, b) {
+  a = a || statsDefault(); b = b || statsDefault();
+  const days = {}; [a.days, b.days].forEach(d => d && typeof d === "object" && Object.entries(d).forEach(([k, v]) => { if (isFinite(+k) && isFinite(+v)) days[k] = Math.max(days[k] ?? -1, +v); }));
+  const L = statsFromDays(days);
+  const big = (b.played || 0) > (a.played || 0) ? b : a;
+  if ((big.played || 0) > L.played) { L.played = big.played; L.sum = big.sum || 0; L.dist = { ...(big.dist || {}) }; }
+  L.best = Math.max(L.best, a.best || 0, b.best || 0); L.bestStreak = Math.max(L.bestStreak, a.bestStreak || 0, b.bestStreak || 0);
+  const last = Math.max(a.lastDay ?? -1, b.lastDay ?? -1);
+  if (last > (L.lastDay ?? -1)) { const src = (a.lastDay ?? -1) >= (b.lastDay ?? -1) ? a : b; L.lastDay = src.lastDay; L.streak = src.streak || 0; }
+  else if (last >= 0 && last === L.lastDay) L.streak = Math.max(L.streak, ...[a, b].filter(x => x.lastDay === last).map(x => x.streak || 0));
+  L.bestStreak = Math.max(L.bestStreak, L.streak); L.v = 2; return L;
+}
+const okResult = r => r && typeof r === "object" && typeof r.id === "string" && Array.isArray(r.rounds) && r.rounds.length <= CONFIG.rounds;
+function pickResult(l, r) {
+  if (!okResult(r)) return l; if (!okResult(l)) return r;
+  if (!!r.done !== !!l.done) return r.done ? r : l;
+  if (l.done) return (l.at || 0) <= (r.at || 0) ? l : r;          // both finished: the first finish counts
+  return (r.rounds.length > l.rounds.length) ? r : l;              // both in progress: the further one
+}
+function mergeResults(a, b) { const out = { ...(a || {}) }; Object.entries(b || {}).forEach(([k, r]) => { const v = pickResult(out[k], r); if (v) out[k] = v; }); return out; }
+function mergeSettings(local, cloud) { return cloud && (cloud._at || 0) > (local._at || 0) ? { theme: cloud.theme || local.theme, sound: !!cloud.sound, _at: cloud._at } : null; }
+
+// ---- auth
+// A magic-link / Google redirect lands on index.html#access_token=…; take the tokens out of the URL before the router sees it.
+const AUTH_REDIRECT = (() => {
+  const h = location.hash; if (!/(^#|&)(access_token|error_description)=/.test(h)) return null;
+  const q = new URLSearchParams(h.slice(1)); try { history.replaceState(null, "", location.pathname + location.search); } catch {}
+  return { access_token: q.get("access_token"), refresh_token: q.get("refresh_token"), error: q.get("error_description") || q.get("error") };
+})();
+async function cloudInit() {
+  if (!accountsOn()) return;
+  Cloud.state = "loading";
+  try { await loadScript("vendor/supabase/supabase.js" + vq); } catch (e) { Cloud.state = "error"; console.warn(e); return; }
+  Cloud.sb = window.supabase.createClient(CONFIG.backend.supabaseUrl, CONFIG.backend.anonKey,   // publishable (sb_publishable_…) or legacy anon key
+    { auth: { storageKey: LS.auth, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, flowType: "implicit" } });
+  Cloud.sb.auth.onAuthStateChange((ev, session) => setTimeout(() => onAuth(ev, session), 0));    // never await supabase calls inside the callback
+  if (AUTH_REDIRECT) {
+    if (AUTH_REDIRECT.error) toast("Sign-in didn't work: " + AUTH_REDIRECT.error);
+    else if (AUTH_REDIRECT.access_token) { const { error } = await Cloud.sb.auth.setSession({ access_token: AUTH_REDIRECT.access_token, refresh_token: AUTH_REDIRECT.refresh_token }); if (error) toast("Sign-in link expired. Request a new one."); }
+  }
+  Cloud.state = "ready";
+  const { data } = await Cloud.sb.auth.getSession(); if (data && data.session) onAuth("INITIAL", data.session); else renderAccountUI();
+  window.addEventListener("online", () => { if ((load(LS.sync, {}) || {}).pending) syncNow("online"); });
+  window.addEventListener("focus", () => { if (Cloud.user && premiumOn() && !isPremium()) refreshProfile(); });
+}
+function onAuth(ev, session) {
+  Cloud.session = session || null;
+  const u = session && session.user;
+  if (!u) { if (Cloud.user) { Cloud.user = null; Cloud.profile = null; localStorage.removeItem(LS.premium); applyPremium(); } renderAccountUI(); return; }
+  const changed = !Cloud.user || Cloud.user.id !== u.id; Cloud.user = u;
+  if (changed) { if (AUTH_REDIRECT && !AUTH_REDIRECT.toasted && (AUTH_REDIRECT.toasted = true)) toast(`Signed in as ${u.email || "you"}`); refreshProfile(); syncNow(ev === "INITIAL" ? "load" : "login"); }
+  renderAccountUI();
+}
+async function signInEmail(email) {
+  const { error } = await Cloud.sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true } });
+  return error;
+}
+async function signInGoogle() { const { error } = await Cloud.sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin + location.pathname } }); if (error) toast(error.message); }
+async function signOut() { try { await Cloud.sb.auth.signOut(); } catch {} onAuth("SIGNED_OUT", null); save(LS.sync, {}); toast("Signed out. Your stats stay in this browser."); }
+
+// ---- sync: pull, merge into localStorage, push the merged copy. On any error it's retried on the next load / when back online.
+function setSync(v) { save(LS.sync, { ...(load(LS.sync, {}) || {}), ...v }); renderAccountUI(); }
+async function syncNow(reason) {
+  if (!Cloud.user || !Cloud.sb) return false;
+  if (Cloud.syncing) { Cloud.again = true; return Cloud.syncing; }
+  Cloud.syncing = (async () => {
+    setSync({ state: "syncing", reason });
+    try {
+      const uid = Cloud.user.id;
+      const { data: row, error } = await Cloud.sb.from("stats").select("stats,results,settings").eq("user_id", uid).maybeSingle();
+      if (error) throw error;
+      const lr = load(LS.results, {}), ls = load(LS.stats, null);
+      const results = mergeResults(lr, row && row.results);
+      const stats = ls || (row && row.stats && row.stats.played) ? mergeStats(withLedger(ls, lr), row && row.stats) : null;
+      const ns = mergeSettings(settings, row && row.settings);
+      if (ns) { Object.assign(settings, ns); save(LS.settings, settings); applyTheme(); }
+      save(LS.results, results); if (stats) save(LS.stats, stats);
+      const { error: e2 } = await Cloud.sb.from("stats").upsert({ user_id: uid, results, stats: stats || {}, settings: { theme: settings.theme, sound: !!settings.sound, _at: settings._at || 0 }, version: 1 }, { onConflict: "user_id" });
+      if (e2) throw e2;
+      setSync({ state: "ok", at: Date.now(), pending: false, err: null });
+      afterSyncRefresh();
+      return true;
+    } catch (e) { setSync({ state: "error", pending: true, err: String((e && e.message) || e) }); return false; }
+    finally { Cloud.syncing = null; if (Cloud.again) { Cloud.again = false; setTimeout(() => syncNow("again"), 0); } }
+  })();
+  return Cloud.syncing;
+}
+function afterSyncRefresh() {   // a game finished on another device: show it here too (never interrupts a round being played)
+  if (!state.puzzle || isPreview() || $("#playView").classList.contains("hidden")) return;
+  const saved = getResult(), g = state.game;
+  if (saved && g && !g.done && dockMode() !== "reveal" && !state.pin && (saved.done || saved.rounds.length > g.rounds.length)) openPuzzle(state.puzzle);
+  if (!$("#archiveView").classList.contains("hidden")) goArchive();
+}
+function cloudAfterGame() { if (Cloud.user) syncNow("game"); else if (accountsOn()) setSync({ pending: false }); }
+
+// ---- Premium (Lemon Squeezy). premium/premium_until are only ever written by the webhook (service role).
+const premiumActive = p => !!(p && p.premium && (!p.premium_until || new Date(p.premium_until).getTime() > Date.now()));
+function isPremium() {
+  if (!premiumOn()) return false;
+  if (Cloud.user && Cloud.profile) return premiumActive(Cloud.profile);
+  const c = load(LS.premium, null); let hasSession = false; try { hasSession = !!localStorage.getItem(LS.auth); } catch {}
+  return hasSession && !!c && premiumActive(c) && (!Cloud.user || c.uid === Cloud.user.id);   // cached until the profile loads, so ads don't flash
+}
+async function refreshProfile() {
+  if (!Cloud.user || !Cloud.sb) return null;
+  const uid = Cloud.user.id;
+  const { data, error } = await Cloud.sb.from("profiles").select("premium,premium_until,ls_status").eq("id", uid).maybeSingle();
+  if (error || !Cloud.user || Cloud.user.id !== uid) return null;     // signed out / switched account while this was in flight
+  Cloud.profile = data || { premium: false, premium_until: null };
+  save(LS.premium, { uid, premium: !!Cloud.profile.premium, premium_until: Cloud.profile.premium_until || null, at: Date.now() });
+  applyPremium(); renderAccountUI(); return Cloud.profile;
+}
+let adTopNode = null;
+function applyPremium() {
+  const on = isPremium(); document.documentElement.classList.toggle("is-premium", on);
+  const ad = $("#adTop");
+  if (on && ad) { adTopNode = ad; ad.remove(); }                                   // Premium: the ad slot is removed, not just hidden
+  else if (!on && !ad && adTopNode) { $("nav.tabs").before(adTopNode); }
+}
+function checkoutUrl() {
+  const u = new URL(CONFIG.premium.checkoutUrl, location.href);
+  u.searchParams.set("checkout[custom][user_id]", Cloud.user.id);                  // echoed back to the webhook as meta.custom_data.user_id
+  if (Cloud.user.email) u.searchParams.set("checkout[email]", Cloud.user.email);
+  u.searchParams.set("embed", "1"); u.searchParams.set("media", "0");
+  return u.toString();
+}
+async function ensureLemon() {
+  await loadScript("https://app.lemonsqueezy.com/js/lemon.js");
+  if (window.createLemonSqueezy) window.createLemonSqueezy();
+  window.LemonSqueezy.Setup({ eventHandler: e => { if (e && e.event === "Checkout.Success") onCheckoutSuccess(); } });
+}
+async function goPremium() {
+  if (!premiumOn()) return;
+  if (!Cloud.user) return accountModal("premium");
+  if (isPremium()) { toast("You're already Premium ⭐"); return; }
+  if (!CONFIG.premium.checkoutUrl) { toast("Premium checkout opens soon"); return; }
+  const url = checkoutUrl(); window.__lastCheckout = url;
+  try { await ensureLemon(); window.LemonSqueezy.Url.Open(url); } catch { window.open(url, "_blank", "noopener"); }
+}
+function onCheckoutSuccess() {
+  try { window.LemonSqueezy.Url.Close(); } catch {}
+  toast("Payment received. Turning on Premium…");
+  const t0 = Date.now(); clearInterval(Cloud.watch);
+  Cloud.watch = setInterval(async () => {   // the webhook usually lands within seconds
+    const p = await refreshProfile();
+    if (premiumActive(p)) { clearInterval(Cloud.watch); toast("⭐ Premium is on. No more ads!"); rerenderOpen(); }
+    else if (Date.now() - t0 > 90000) { clearInterval(Cloud.watch); toast("Premium is taking a while. It'll switch on as soon as the payment is confirmed."); }
+  }, 1500);
+}
+function rerenderOpen() {
+  const m = $("#modal"); if (!m.classList.contains("hidden")) { const k = m.dataset.kind; if (k === "account") accountModal(); else if (k === "premium") premiumModal(); }
+  renderFeatureExtras();
+}
+// ---- AdSense: post-round-5 unit only, never for Premium (the script isn't even loaded); placeholder if no slot / blocked
+let interPlaceholder = null;
+function ensureAdSense() {
+  if (!adsOn() || isPremium()) return Promise.reject(new Error("ads off"));
+  return loadScript(`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(CONFIG.ads.client)}`, { crossorigin: "anonymous" });
+}
+function renderInterstitialAd() {
+  const fill = $("#interstitial .inter-fill"); if (interPlaceholder == null) interPlaceholder = fill.innerHTML;
+  fill.innerHTML = interPlaceholder;
+  if (!adsOn() || !CONFIG.ads.slot || isPremium()) return;
+  ensureAdSense().then(() => {
+    fill.innerHTML = `<ins class="adsbygoogle" style="display:block;min-height:250px" data-ad-client="${esc(CONFIG.ads.client)}" data-ad-slot="${esc(CONFIG.ads.slot)}" data-ad-format="auto" data-full-width-responsive="true"></ins>`;
+    try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch { fill.innerHTML = interPlaceholder; return; }
+    setTimeout(() => { const ins = fill.querySelector("ins.adsbygoogle"); if (ins && (ins.dataset.adStatus === "unfilled" || !ins.offsetHeight)) fill.innerHTML = interPlaceholder; }, 3000);
+  }).catch(() => { fill.innerHTML = interPlaceholder; });
+}
+
+// ---- account UI
+function renderAccountUI() {
+  const b = $("#accountBtn"); if (!b) return;
+  b.classList.toggle("hidden", !accountsOn());
+  if (!accountsOn()) return;
+  const u = Cloud.user, prem = isPremium();
+  b.innerHTML = u ? `<span class="acc-ini">${esc((u.email || "?").slice(0, 1).toUpperCase())}</span>${prem ? '<span class="acc-star">⭐</span>' : ""}`
+    : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>`;
+  b.title = b.ariaLabel = u ? `Account (${u.email || "signed in"})` : "Sign in to sync your stats";
+  renderFeatureExtras();
+}
+const syncLine = () => { const s = load(LS.sync, {}) || {};
+  if (s.state === "syncing") return "Syncing…";
+  if (s.state === "error") return `⚠️ Couldn't sync (we'll retry automatically)`;
+  if (s.at) return `✓ Synced ${new Date(s.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`; return "Not synced yet"; };
+function accountModal(reason) {
+  if (!accountsOn()) return;
+  const u = Cloud.user;
+  if (!u) {
+    openModal(`<div class="acc" data-k="login"><h2>Sign in</h2>
+      <p class="acc-sub">Keep your streak, results and settings on every device. <b>Optional:</b> you can always play without an account.</p>
+      ${reason === "premium" ? `<div class="notice">⭐ Sign in first, so Premium is tied to your account on every device.</div>` : ""}
+      <button class="acc-google" id="accGoogle" type="button"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.1C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.2-13.5-10l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>
+      <div class="acc-or"><span>or</span></div>
+      <form id="accEmailForm" class="optin-form" novalidate><label>Email<input name="email" type="email" placeholder="you@example.com" autocomplete="email" required></label>
+      <button class="pill-btn primary" type="submit">Email me a sign-in link</button><p class="form-msg" id="accMsg" aria-live="polite"></p></form>
+      <p class="acc-fine">We only use your email to sign you in and, if you submit photos, to reach you about them. <a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a></p></div>`, "account");
+    $("#accGoogle").onclick = signInGoogle;
+    $("#accEmailForm").onsubmit = async e => { e.preventDefault(); const em = e.target.email.value.trim(), msg = $("#accMsg");
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { msg.className = "form-msg bad"; msg.textContent = "Please enter a valid email."; return; }
+      msg.className = "form-msg"; msg.textContent = "Sending…"; const err = await signInEmail(em);
+      if (err) { msg.className = "form-msg bad"; msg.textContent = /rate|seconds/i.test(err.message) ? "Too many requests. Please wait a minute and try again." : "Couldn't send the link: " + err.message; return; }
+      msg.className = "form-msg good"; msg.innerHTML = `📬 Check your inbox at <b>${esc(em)}</b> and tap the link <b>on this device</b> to sign in.`; };
+    return;
+  }
+  const prem = isPremium(), p = Cloud.profile || {};
+  openModal(`<div class="acc" data-k="account"><h2>Your account</h2>
+    <div class="acc-row"><div class="acc-av">${esc((u.email || "?").slice(0, 1).toUpperCase())}</div><div><b class="acc-email">${esc(u.email || "")}</b><small>Signed in · stats sync across your devices</small></div></div>
+    <div class="acc-sync"><span id="accSync">${esc(syncLine())}</span><button class="link-btn" id="accSyncNow" type="button">Sync now</button></div>
+    ${premiumOn() ? (prem ? `<div class="acc-plan prem">⭐ <b>Premium</b> · no ads${p.premium_until ? ` · until ${esc(new Date(p.premium_until).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }))}` : ""}</div>`
+      : `<div class="acc-plan"><span>Free plan</span><button class="pill-btn primary" id="accPremium" type="button">⭐ Go Premium</button></div>`) : ""}
+    <div class="confirm-row"><button class="pill-btn ghost" id="accSignOut" type="button">Sign out</button></div></div>`, "account");
+  $("#accSyncNow").onclick = async () => { $("#accSync").textContent = "Syncing…"; await syncNow("manual"); if ($("#accSync")) $("#accSync").textContent = syncLine(); };
+  $("#accSignOut").onclick = async () => { await signOut(); closeModal(); };
+  if ($("#accPremium")) $("#accPremium").onclick = premiumModal;
+}
+function premiumModal() {
+  if (!premiumOn()) return;
+  const c = CONFIG.premium, prem = isPremium(), u = Cloud.user;
+  const label = prem ? "You're Premium ⭐" : !u ? "Sign in to go Premium" : !c.checkoutUrl ? "Checkout opens soon" : `Go Premium${c.price ? ` · ${esc(c.price)}` : ""}`;
+  openModal(`<div class="prem-card" data-k="premium"><div class="prem-badge">⭐ Premium</div><h2>WhereIsShe Premium</h2>
+    <div class="prem-price">${c.price ? esc(c.price) : "Price coming soon"}</div>
+    <ul class="prem-list"><li><span>🚫</span>No ads: no banner and no ad after round 5</li><li><span>⚡</span>Priority review for your Feature me submissions</li>
+      <li><span>☁️</span>On every device you sign in on</li><li><span>❤️</span>Supports a small indie game</li></ul>
+    ${c.testMode ? `<p class="prem-test">🧪 Test mode: no real charge. Use the Lemon Squeezy test card 4242 4242 4242 4242.</p>` : ""}
+    <button class="pill-btn primary prem-go" id="premGo" type="button" ${prem || (u && !c.checkoutUrl) ? "disabled" : ""}>${label}</button>
+    <p class="prem-fine">Payments are handled by Lemon Squeezy, our merchant of record. <a href="terms.html" target="_blank" rel="noopener">Terms</a> · <a href="refund.html" target="_blank" rel="noopener">Refunds</a> · <a href="privacy.html" target="_blank" rel="noopener">Privacy</a></p></div>`, "premium");
+  $("#premGo").onclick = goPremium;
+}
+
+// ---- Feature me (v11): links and/or uploads, self-submission only. Login required; the server (submit_feature() + storage RLS)
+// enforces: verified email, not banned, honeypot empty, 1 per 24 h, <= 3 pending, <= 10 links, <= 5 files of <= 25 MB image/video.
+const FF = { files: [], busy: false };
+const FF_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "image/gif", "video/mp4", "video/quicktime", "video/webm"];
+const mb = n => `${(n / 1048576).toFixed(n < 10485760 ? 1 : 0)} MB`;
+function checkLink(u) { const s = String(u || "").trim(); if (!s || s.length > 500) return null; let x; try { x = new URL(s); } catch { return null; }
+  return x.protocol === "https:" && x.hostname.includes(".") && !x.username && !x.password ? x.toString() : null; }
+function setupFeatureForm() {
+  const on = submissionsOn();
+  $("#optinForm").classList.toggle("hidden", on); $("#featureDone").classList.add("hidden");
+  if (!on) { $("#featureForm").classList.add("hidden"); $("#ffGate").classList.add("hidden"); return; }
+  $("#optinSub").textContent = "Want to be featured? Send us your own travel photos and clips, as links, uploads, or both. We review every submission by hand.";
+  if (!$("#ffLinks").children.length) addLinkRow();
+  renderFeatureExtras();
+}
+function addLinkRow(v = "") {
+  const box = $("#ffLinks"); if (box.children.length >= CONFIG.submissions.maxLinks) { toast(`Up to ${CONFIG.submissions.maxLinks} links`); return; }
+  const row = document.createElement("div"); row.className = "ff-link";
+  row.innerHTML = `<input type="url" name="link" placeholder="https://www.instagram.com/p/…" inputmode="url" autocomplete="off" value="${esc(v)}"><input name="linkLoc" placeholder="Where was it taken? (optional)" maxlength="200"><button type="button" class="ff-x" aria-label="Remove link">✕</button>`;
+  row.querySelector(".ff-x").onclick = () => { row.remove(); if (!box.children.length) addLinkRow(); $("#ffAddLink").disabled = false; };
+  box.appendChild(row); $("#ffAddLink").disabled = box.children.length >= CONFIG.submissions.maxLinks;
+}
+function renderFileList() {
+  $("#ffFileList").innerHTML = FF.files.map((f, i) => `<div class="ff-file" data-i="${i}"><span class="ff-fname">${f.type.startsWith("video") ? "🎬" : "🖼"} ${esc(f.name)} <small>${mb(f.size)}</small></span>
+    <input name="fileLoc" data-i="${i}" placeholder="Where was it taken? (city, country)" maxlength="200" value="${esc(f._loc || "")}" required><button type="button" class="ff-x" data-i="${i}" aria-label="Remove file">✕</button></div>`).join("");
+  $$("#ffFileList input").forEach(inp => inp.oninput = () => { FF.files[+inp.dataset.i]._loc = inp.value; });
+  $$("#ffFileList .ff-x").forEach(x => x.onclick = () => { FF.files.splice(+x.dataset.i, 1); renderFileList(); });
+}
+function addFiles(list) {
+  const S = CONFIG.submissions, bad = [];
+  for (const f of list) {
+    if (FF.files.length >= S.maxFiles) { bad.push(`only ${S.maxFiles} files`); break; }
+    if (!FF_TYPES.includes(f.type)) { bad.push(`${f.name}: photos and videos only`); continue; }
+    if (f.size > S.maxFileMB * 1048576) { bad.push(`${f.name}: over ${S.maxFileMB} MB`); continue; }
+    FF.files.push(f);
+  }
+  renderFileList(); const msg = $("#ffMsg");
+  if (bad.length) { msg.className = "form-msg bad"; msg.textContent = "Skipped: " + bad.join("; ") + "."; } else if (msg.classList.contains("bad")) msg.textContent = "";
+}
+const userVerified = u => !!(u && u.email && (u.email_confirmed_at || u.confirmed_at));
+function renderFeatureExtras() {
+  if (!$("#featureForm") || !submissionsOn()) return;
+  const u = Cloud.user, ok = userVerified(u), done = !$("#featureDone").classList.contains("hidden");
+  $("#ffGate").classList.toggle("hidden", ok || done); if (!done) $("#featureForm").classList.toggle("hidden", !ok);
+  $("#ffGateText").textContent = u && !ok ? `Please verify your email (${u.email || "no email on this account"}) first: open the sign-in link we emailed you, then come back.`
+    : "To keep out spam, submissions need a free account with a verified email. Sign in with Google or a one-time email link, no password.";
+  $("#ffGateBtn").textContent = u && !ok ? "Account" : "Log in to submit";
+  if (ok) $("#ffSignedIn").innerHTML = `Signed in as <b>${esc(u.email)}</b>. We'll only use this email to reach you about your submission.`;
+  const up = premiumOn() ? (isPremium() ? `<div class="ff-prio">⭐ You're Premium: your submission gets <b>priority review</b>.</div>`
+    : `<div class="upsell"><div><b>⭐ Premium submitters get priority review</b><small>Plus no ads. ${CONFIG.premium.price ? esc(CONFIG.premium.price) : ""}</small></div><button class="pill-btn primary" type="button" data-go-premium>Go Premium</button></div>`) : "";
+  $$("#ffUpsell, #ffDoneUpsell, #ffGateUpsell").forEach(b => { b.innerHTML = b.id !== "ffUpsell" && isPremium() ? "" : up; });
+  $$("[data-go-premium]").forEach(b => b.onclick = goPremium);
+}
+const FF_ERR = {
+  login_required: "Please log in to submit.", email_not_verified: "Please verify your email first (open the sign-in link we emailed you).",
+  banned: "This account can't send submissions. If you think that's a mistake, email us (see Privacy).",
+  rate_limited_daily: "You've already sent a submission in the last 24 hours. Please try again tomorrow.",
+  too_many_pending: "You already have 3 submissions waiting for review. Please wait until we've looked at them.",
+  too_many_links: "At most 10 links per submission.", too_many_files: "At most 5 files per submission.",
+  invalid_file_type: "Photos and videos only.", file_too_large: "Each file must be 25 MB or less.", location_required: "Please say where each uploaded photo/video was taken.",
+  invalid_link: "Please check your links (they must start with https://).", invalid_handle: "Please check your Instagram handle.",
+  consent_required: "Please tick the three confirmations.", empty: "Please add at least one link or file.", rejected: "Couldn't send your submission." };
+async function submitFeature(e) {
+  e.preventDefault(); if (FF.busy) return;
+  const f = e.target, msg = $("#ffMsg"), S = CONFIG.submissions, errs = [];
+  if (!userVerified(Cloud.user)) { renderFeatureExtras(); return; }
+  const handle = handleOf(f.handle.value);
+  if (!/^[A-Za-z0-9._]{1,30}$/.test(handle)) errs.push("your Instagram handle");
+  const links = []; let badLinks = 0;
+  $$("#ffLinks .ff-link").forEach(r => { const v = r.querySelector("[name=link]").value.trim(); if (!v) return; const ok = checkLink(v);
+    r.classList.toggle("bad", !ok); if (!ok) badLinks++; else links.push({ url: ok, location: r.querySelector("[name=linkLoc]").value.trim() }); });
+  if (badLinks) errs.push(`${badLinks === 1 ? "a valid link" : "valid links"} (must start with https://)`);
+  if (links.length > S.maxLinks) errs.push(`at most ${S.maxLinks} links`);
+  FF.files.forEach(x => { x._loc = (x._loc || "").trim(); });
+  if (FF.files.some(x => !x._loc)) errs.push("where each uploaded photo/video was taken");
+  if (!links.length && !FF.files.length && !badLinks) errs.push("at least one link or file");
+  if (!f.isSelf.checked) errs.push("confirmation that you're the person in these photos / it's your account");
+  if (!f.consent.checked) errs.push("your consent to being featured");
+  if (!f.adult.checked) errs.push("confirmation that you're 18 or older");
+  if (errs.length) { msg.className = "form-msg bad"; msg.textContent = "Please add " + errs.join(", ") + "."; return; }
+  FF.busy = true; $("#ffSubmit").disabled = true; msg.className = "form-msg"; msg.textContent = "Sending…";
+  const p = { handle, links, is_self: true, consent: true, adult: true, website: f.website.value,   // honeypot: the server rejects it if filled
+    consent_text: $$("#featureForm .check span").map(s => s.textContent.trim()).join(" | "),
+    items: FF.files.map(x => ({ name: x.name, type: x.type, size: x.size, location: x._loc })) };
+  try {
+    const { data: j, error } = await Cloud.sb.rpc("submit_feature", { p });
+    if (error) throw Object.assign(new Error(error.message), { code: String(error.message || "").trim() });
+    let up = 0; const failed = [];
+    for (let i = 0; i < (j.uploads || []).length; i++) {     // straight to Storage with the player's own session; RLS checks the path
+      const path = j.uploads[i], file = FF.files[i]; msg.textContent = `Uploading ${i + 1} of ${j.uploads.length}…`;
+      const { error: ue } = await Cloud.sb.storage.from("submissions").upload(path, file, { contentType: file.type, upsert: false });
+      if (ue) failed.push(file.name); else up++;
+    }
+    let fin = { status: j.status };
+    if (j.status === "uploading") { const r2 = await Cloud.sb.rpc("complete_submission", { sid: j.id }); if (!r2.error) fin = r2.data; }
+    window.__lastFeature = { id: j.id, priority: !!j.priority, uploaded: up, failed, links: links.length, status: fin.status };
+    showFeatureDone({ id: j.id, priority: !!j.priority, links: links.length, uploaded: up, failed });
+  } catch (err) {
+    msg.className = "form-msg bad";
+    msg.textContent = FF_ERR[err.code] || "Couldn't send your submission. Please try again in a moment.";
+    window.__lastFeatureError = err.code || String(err.message || err);
+  } finally { FF.busy = false; $("#ffSubmit").disabled = false; }
+}
+function showFeatureDone(r) {
+  $("#featureForm").classList.add("hidden"); const d = $("#featureDone"); d.classList.remove("hidden");
+  const parts = [r.links ? `${r.links} link${r.links > 1 ? "s" : ""}` : "", r.uploaded ? `${r.uploaded} file${r.uploaded > 1 ? "s" : ""}` : ""].filter(Boolean).join(" and ");
+  $("#ffDoneText").innerHTML = `We got your submission${parts ? ` (${parts})` : ""}. We review every one by hand and will email you before anything goes live.
+    ${r.failed.length ? `<br><span class="bad">⚠️ ${r.failed.length} file(s) didn't upload: ${esc(r.failed.join(", "))}. You can send them as links instead.</span>` : ""}
+    ${r.priority ? `<br><b class="ff-prio-tag">⭐ Priority review (Premium)</b>` : ""}`;
+  renderFeatureExtras(); window.scrollTo({ top: 0 });
+}
+function resetFeatureForm() {
+  const f = $("#featureForm"); f.reset(); FF.files = []; renderFileList(); $("#ffLinks").innerHTML = ""; addLinkRow(); $("#ffMsg").textContent = "";
+  $("#featureDone").classList.add("hidden"); f.classList.remove("hidden"); renderFeatureExtras();
+}
+function wireV11() {
+  $("#accountBtn").onclick = () => accountModal();
+  $("#featureForm").onsubmit = submitFeature;
+  $("#ffAddLink").onclick = () => addLinkRow();
+  $("#ffFiles").onchange = e => { addFiles([...e.target.files]); e.target.value = ""; };
+  $("#ffAnother").onclick = resetFeatureForm;
+  $("#ffGateBtn").onclick = () => accountModal();
+  renderAccountUI(); applyPremium();
 }
 
 // ================================================================ puzzle file upload (json / csv / xlsx)
@@ -813,7 +1232,10 @@ async function handleFiles(files) {
   } catch (e) { console.error(e); toast("Couldn't read that file: " + e.message); }
 }
 window.WISLoadFiles = handleFiles;
-window.WIS = { videoState: () => ({ state: VS.state, tries: VS.tries, round: VS.round, src: VS.url, log: VS.log.slice(), preload: preloadNext.el ? preloadNext.el.dataset.src : null }), crossPromoCheck, visits: () => load(LS.visits, 0), Zoom, fitMedia, summaryMap: () => summaryMap, CONFIG, dailyPool, puzzleForDate, schedule: () => SCHED, mode: () => state.mode, dockMode, scoreFor, isPerfect, haversineKm, band, resultText, puzzles: () => ALL, map: () => map };   // test hooks
+window.WIS = { videoState: () => ({ state: VS.state, tries: VS.tries, round: VS.round, src: VS.url, log: VS.log.slice(), preload: preloadNext.el ? preloadNext.el.dataset.src : null }), crossPromoCheck, visits: () => load(LS.visits, 0), Zoom, fitMedia, summaryMap: () => summaryMap, CONFIG, dailyPool, puzzleForDate, schedule: () => SCHED, mode: () => state.mode, dockMode, scoreFor, isPerfect, haversineKm, band, resultText, puzzles: () => ALL, map: () => map,
+  features: () => ({ accounts: accountsOn(), premium: premiumOn(), submissions: submissionsOn(), ads: adsOn() }),
+  cloud: () => ({ state: Cloud.state, user: Cloud.user ? { id: Cloud.user.id, email: Cloud.user.email } : null, premium: isPremium(), profile: Cloud.profile, sync: load(LS.sync, null), syncing: !!Cloud.syncing }),
+  syncNow, mergeStats, mergeResults, statsFromDays, ledgerFromResults, feature: () => ({ files: FF.files.length, gate: !$("#ffGate").classList.contains("hidden"), form: !$("#featureForm").classList.contains("hidden") }) };   // test hooks
 
 // ================================================================ wire up
 $("#guessBtn").onclick = submitGuess; $("#nextRoundBtn").onclick = nextRound; $("#nextBtn").onclick = next;
@@ -849,6 +1271,7 @@ document.addEventListener("keydown", e => {
 });
 
 applyTheme();
+wireV11();
 $("#welSoundOn").onclick = () => chooseSound("on"); $("#welSoundOff").onclick = () => chooseSound("off");
 $("#welSkip").onclick = e => { e.preventDefault(); chooseSound("skip"); };
 ["pointerdown", "mousedown", "touchstart"].forEach(ev => $("#vidLoading .vl-btn").addEventListener(ev, e => e.stopPropagation(), { passive: true }));   // keep the media's drag/zoom from capturing the tap
@@ -870,4 +1293,5 @@ window.addEventListener("hashchange", () => { if (location.hash !== linkHash()) 
 route();
 if (!welcomeDone() && !isPreview() && !location.hash.startsWith("#optin")) showWelcome();
 else setTimeout(maybeCrossPromo, 1500);
+cloudInit();   // v11: no-op unless CONFIG.backend.enabled
 })();

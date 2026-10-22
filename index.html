@@ -11,9 +11,9 @@
   (function(){try{var t=JSON.parse(localStorage.getItem("wis.settings.v1")||"{}").theme||"system";
   if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t;}catch(e){}})();
 </script>
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=7632a6d25a">
-<link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css?v=7632a6d25a">
-<link rel="stylesheet" href="styles.css?v=7632a6d25a">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=7754b1982b">
+<link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css?v=7754b1982b">
+<link rel="stylesheet" href="styles.css?v=7754b1982b">
 <!--
   ADSENSE: when approved, add the AdSense loader once here, e.g.
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
@@ -27,6 +27,8 @@
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
   </button>
   <div class="top-actions">
+    <!-- v11: account (only shown when CONFIG.backend.enabled) -->
+    <button class="round-btn acc-btn hidden" id="accountBtn" aria-label="Sign in" title="Sign in"></button>
     <button class="round-btn" id="themeBtn" aria-label="Toggle light/dark mode" title="Light / dark"></button>
     <button class="round-btn" id="statsBtn" aria-label="Your stats" title="Your stats">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>
@@ -134,7 +136,7 @@
   <!-- ======== OPT-IN ("Feature me") VIEW: #optin ======== -->
   <section id="optinView" class="hidden">
     <h2 class="section-title"><span class="hl">Feature me</span></h2>
-    <p class="section-sub">Want to be a future "She"? Opt in and we'll build a day around your travel photos.</p>
+    <p class="section-sub" id="optinSub">Want to be a future "She"? Opt in and we'll build a day around your travel photos.</p>
     <form class="optin-form card-box" id="optinForm" novalidate>
       <label>Instagram handle<input name="handle" placeholder="@yourhandle" autocomplete="off" required></label>
       <label>Email<input name="email" type="email" placeholder="you@example.com" autocomplete="email" required>
@@ -147,6 +149,41 @@
       <button class="pill-btn primary" type="submit">Feature me</button>
       <p class="form-msg" id="optinMsg" aria-live="polite"></p>
     </form>
+    <!-- v11 "Feature me" submission form (CONFIG.submissions.enabled): login required (verified email via magic link or
+         Google), links and/or uploads, self-submission only. Rows are only created by the submit_feature() database function,
+         which enforces the limits server-side; files go to <your account id>/<submission id>/ in a private bucket. -->
+    <div class="card-box ff-gate hidden" id="ffGate">
+      <div class="fd-emoji">🔒</div><h3>Log in to submit</h3>
+      <p id="ffGateText">To keep out spam, submissions need a free account with a verified email. Sign in with Google or a one-time email link, no password.</p>
+      <button class="pill-btn primary" type="button" id="ffGateBtn">Log in to submit</button>
+      <div id="ffGateUpsell"></div>
+    </div>
+    <form class="optin-form card-box feature-form hidden" id="featureForm" novalidate>
+      <p class="ff-signed" id="ffSignedIn"></p>
+      <label>Instagram handle<input name="handle" placeholder="@yourhandle" autocomplete="off" required maxlength="31"></label>
+      <div class="ff-hp" aria-hidden="true"><label>Website (leave empty)<input name="website" type="text" tabindex="-1" autocomplete="off"></label></div>
+      <fieldset class="ff-box"><legend>Links to your photos or videos</legend>
+        <p class="ff-help">Your own Instagram posts, reels or highlights, or any other https link. Up to 10.</p>
+        <div id="ffLinks"></div><button type="button" class="link-btn" id="ffAddLink">+ Add another link</button></fieldset>
+      <fieldset class="ff-box"><legend>…and/or upload them</legend>
+        <p class="ff-help">Up to 5 photos or videos, 25 MB each. Tell us where each one was taken.</p>
+        <label class="ff-pick"><input type="file" id="ffFiles" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/gif,video/mp4,video/quicktime,video/webm"><span>📎 Choose photos / videos</span></label>
+        <div id="ffFileList"></div></fieldset>
+      <div class="notice ff-home">📍 <b>Pins show where a photo was taken, never where someone lives.</b> Please don't send photos taken at or near your home.</div>
+      <label class="check"><input type="checkbox" name="isSelf"><span>I am the person in these photos / this is my account.</span></label>
+      <label class="check"><input type="checkbox" name="consent"><span>I consent to being featured on Where Is She, with my Instagram linked after the game.</span></label>
+      <label class="check"><input type="checkbox" name="adult"><span>I am 18 or older.</span></label>
+      <p class="ff-help">You can have your photos and profile link removed at any time. You approve your day before it goes live.</p>
+      <p class="ff-help">Limits: 1 submission per day, up to 3 waiting for review at a time.</p>
+      <div id="ffUpsell"></div>
+      <button class="pill-btn primary" type="submit" id="ffSubmit">Send my submission</button>
+      <p class="form-msg" id="ffMsg" aria-live="polite"></p>
+    </form>
+    <div class="card-box feature-done hidden" id="featureDone" role="status">
+      <div class="fd-emoji">✅</div><h3>Thanks! Submission received</h3><p id="ffDoneText"></p>
+      <div id="ffDoneUpsell"></div>
+      <button class="pill-btn ghost" type="button" id="ffAnother">Submit something else</button>
+    </div>
   </section>
 
   <!-- ======== ARCHIVE VIEW ======== -->
@@ -159,6 +196,7 @@
 
 <footer class="foot">
   <a href="#optin" id="optinLink">Feature me</a> · <a href="#" id="removeLink">Remove my photos</a> · <a href="#" id="clearLink">Clear my game data</a><br>
+  <a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a> · <a href="refund.html">Refunds</a><br>
   WhereIsShe prototype · Photos used with permission (<a href="#" id="aboutLink">about</a>) · Map © <a href="https://openfreemap.org">OpenFreeMap</a> · © OpenStreetMap contributors
 </footer>
 
@@ -218,12 +256,12 @@
 <div class="toast" id="toast"></div>
 <input type="file" id="fileInput" accept=".json,.csv,.xlsx,.xls" hidden>
 
-<script src="vendor/leaflet/leaflet.js?v=7632a6d25a"></script>
-<script src="vendor/maplibre/maplibre-gl.js?v=7632a6d25a"></script>
-<script src="vendor/maplibre/leaflet-maplibre-gl.js?v=7632a6d25a"></script>
-<script src="tiles.js?v=7632a6d25a"></script>
-<script src="vendor/xlsx.full.min.js?v=7632a6d25a"></script>
-<script src="puzzles-data.js?v=7632a6d25a"></script>
-<script src="app.js?v=7632a6d25a"></script>
+<script src="vendor/leaflet/leaflet.js?v=7754b1982b"></script>
+<script src="vendor/maplibre/maplibre-gl.js?v=7754b1982b"></script>
+<script src="vendor/maplibre/leaflet-maplibre-gl.js?v=7754b1982b"></script>
+<script src="tiles.js?v=7754b1982b"></script>
+<script src="vendor/xlsx.full.min.js?v=7754b1982b"></script>
+<script src="puzzles-data.js?v=7754b1982b"></script>
+<script src="app.js?v=7754b1982b"></script>
 </body>
 </html>
