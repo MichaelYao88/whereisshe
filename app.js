@@ -29,7 +29,7 @@ const CONFIG = {
 // Anything from earlier versions (v1 keys, other daily numbering, other puzzle content) is discarded, never resumed.
 const LS = { results: "wis.results.v2", stats: "wis.stats.v2", settings: "wis.settings.v1", custom: "wis.custom.v1" };
 const LEGACY_LS = ["wis.results.v1", "wis.stats.v1"];
-const BUILD = "99c8838c52";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
+const BUILD = "d8ddd76386";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
 const BANDS = [[100, "🟩", "e-g"], [500, "🟨", "e-y"], [2000, "🟧", "e-o"], [Infinity, "🟥", "e-r"]];   // km thresholds
 
 // ================================================================
@@ -564,7 +564,7 @@ function goPractice(idx) {
   if (idx == null) idx = (dayNumber(todayKey()) + 1) % ALL.length;
   state.practiceIdx = ((idx % ALL.length) + ALL.length) % ALL.length; openPuzzle(ALL[state.practiceIdx]);
 }
-const whoHint = p => `Who ${W(p).subj === "they" ? "are" : "is"} ${W(p).subj}? IG available later`;   // in-game reminder (handle only on the Meet card)
+const whoHint = p => `Who ${W(p).subj === "they" ? "are" : "is"} ${W(p).subj}? Find out after the game.`;   // in-game reminder (handle only on the Meet card)
 const dayLabel = p => p.featured ? `Featured day · ${whoHint(p)}` : "Custom day";
 function goArchive() {
   showView("archive"); setHash("#archive");
