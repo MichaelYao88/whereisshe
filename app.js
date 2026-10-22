@@ -31,12 +31,12 @@ const CONFIG = {
   // Map tiles: see tiles.js (OpenFreeMap vector basemap via MapLibre, Esri raster fallback; no API keys).
   // ---- v11 (see SETUP.md). All OFF on the live site until the Supabase migration is applied and RLS is verified.
   // backend: PUBLIC values only. anonKey = the publishable key (sb_publishable_…) or the legacy anon JWT. NEVER a sb_secret_ key.
-  backend: { enabled: false, supabaseUrl: "https://xhaduveumhtikwoekxdi.supabase.co", anonKey: "sb_publishable_Aoj_rFQBnwqahuEpCJFqww_9umiFFxx" },
+  backend: { enabled: true, supabaseUrl: "https://xhaduveumhtikwoekxdi.supabase.co", anonKey: "sb_publishable_Aoj_rFQBnwqahuEpCJFqww_9umiFFxx" },
   // Lemon Squeezy checkout link of the Premium variant (Share -> checkout URL), e.g. https://STORE.lemonsqueezy.com/buy/<uuid>.
   // testMode: true while using the store's test-mode link (shows a "no real charge" note); set false after going live.
-  premium: { enabled: false, testMode: true, checkoutUrl: "https://mikelyaps.lemonsqueezy.com/checkout/buy/ca1efbfa-7ab8-4fe6-b96a-694c1f5691fa", price: "From $2.67/month · suggested $6.70", billing: "Monthly subscription · cancel anytime" },   // pay-what-you-want monthly (min $2.67, suggested $6.70)
+  premium: { enabled: true, testMode: true, checkoutUrl: "https://mikelyaps.lemonsqueezy.com/checkout/buy/ca1efbfa-7ab8-4fe6-b96a-694c1f5691fa", price: "From $2.67/month · suggested $6.70", billing: "Monthly subscription · cancel anytime" },   // pay-what-you-want monthly (min $2.67, suggested $6.70)
   // "Feature me" v11 form (links and/or uploads). Login required; limits enforced by the submit_feature() SQL function.
-  submissions: { enabled: false, maxFiles: 5, maxFileMB: 25, maxLinks: 10 },
+  submissions: { enabled: true, maxFiles: 5, maxFileMB: 25, maxLinks: 10 },
   // Google AdSense for the post-round-5 unit. Never loaded for Premium players. slot "" = keep the placeholder.
   ads: { enabled: false, client: "ca-pub-5196178239625142", slot: "" },
 };
@@ -48,7 +48,7 @@ const CONFIG = {
 const LS = { results: "wis.results.v2", stats: "wis.stats.v2", settings: "wis.settings.v1", custom: "wis.custom.v1", welcome: "wis.welcome.v1", visits: "wis.visits.v1", promo: "wis.promo.v1",
   auth: "wis.auth.v1", sync: "wis.sync.v1", premium: "wis.premium.v1" };   // v11: Supabase session (cleared by "Clear my game data" = signed out here), sync status, Premium cache
 const LEGACY_LS = ["wis.results.v1", "wis.stats.v1"];
-const BUILD = "aa5755ef09";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
+const BUILD = "3148c28028";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
 const BANDS = [[100, "🟩", "e-g"], [500, "🟨", "e-y"], [2000, "🟧", "e-o"], [Infinity, "🟥", "e-r"]];   // km thresholds
 
 // ================================================================
@@ -837,6 +837,7 @@ const isLocalHost = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 const accountsOn = () => !!(CONFIG.backend.enabled && CONFIG.backend.supabaseUrl && CONFIG.backend.anonKey && !/^sb_secret_/i.test(CONFIG.backend.anonKey));
 const premiumOn = () => accountsOn() && !!CONFIG.premium.enabled;
 const submissionsOn = () => accountsOn() && !!CONFIG.submissions.enabled;
+const googleOn = () => !!(Cloud.providers && Cloud.providers.google);
 const adsOn = () => !!(CONFIG.ads.enabled && CONFIG.ads.client);
 if (/^sb_secret_/i.test(CONFIG.backend.anonKey || "")) console.error("WhereIsShe: CONFIG.backend.anonKey is a SECRET key. Never ship it; use the publishable key. Accounts disabled.");
 const vq = BUILD.startsWith("__") ? "" : "?v=" + BUILD;
@@ -845,7 +846,7 @@ function loadScript(src, attrs = {}) {
   return scriptP[src] || (scriptP[src] = new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.async = true;
     Object.entries(attrs).forEach(([k, v]) => s.setAttribute(k, v)); s.onload = () => res(); s.onerror = () => { delete scriptP[src]; s.remove(); rej(new Error("couldn't load " + src)); }; document.head.appendChild(s); }));
 }
-const Cloud = { sb: null, session: null, user: null, profile: null, state: "off", syncing: null, again: false, watch: 0 };
+const Cloud = { sb: null, providers: {}, session: null, user: null, profile: null, state: "off", syncing: null, again: false, watch: 0 };
 
 // ---- merging (local-first: localStorage stays the source of truth; the cloud row is merged in, never blindly copied)
 const statsDefault = () => ({ played: 0, sum: 0, best: 0, streak: 0, bestStreak: 0, lastDay: null, dist: {}, days: {} });
@@ -906,12 +907,18 @@ async function cloudInit() {
   try { await loadScript("vendor/supabase/supabase.js" + vq); } catch (e) { Cloud.state = "error"; console.warn(e); return; }
   Cloud.sb = window.supabase.createClient(CONFIG.backend.supabaseUrl, CONFIG.backend.anonKey,   // publishable (sb_publishable_…) or legacy anon key
     { auth: { storageKey: LS.auth, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, flowType: "implicit" } });
+  // which sign-in providers are switched on in Supabase (public endpoint): the Google button only shows when Google is enabled
+  const providersReady = Promise.race([
+    fetch(CONFIG.backend.supabaseUrl.replace(/\/$/, "") + "/auth/v1/settings", { headers: { apikey: CONFIG.backend.anonKey } })
+      .then(r => r.ok ? r.json() : {}).then(j => { Cloud.providers = (j && j.external) || {}; }).catch(() => { Cloud.providers = {}; }),
+    new Promise(r => setTimeout(r, 4000))]);
   Cloud.sb.auth.onAuthStateChange((ev, session) => setTimeout(() => onAuth(ev, session), 0));    // never await supabase calls inside the callback
   if (AUTH_REDIRECT) {
     if (AUTH_REDIRECT.error) toast("Sign-in didn't work: " + AUTH_REDIRECT.error);
     else if (AUTH_REDIRECT.access_token) { const { error } = await Cloud.sb.auth.setSession({ access_token: AUTH_REDIRECT.access_token, refresh_token: AUTH_REDIRECT.refresh_token }); if (error) toast("Sign-in link expired. Request a new one."); }
   }
   Cloud.state = "ready";
+  await providersReady;
   const { data } = await Cloud.sb.auth.getSession(); if (data && data.session) onAuth("INITIAL", data.session); else renderAccountUI();
   window.addEventListener("online", () => { if ((load(LS.sync, {}) || {}).pending) syncNow("online"); });
   window.addEventListener("focus", () => { if (Cloud.user && premiumOn() && !isPremium()) refreshProfile(); });
@@ -1063,12 +1070,12 @@ function accountModal(reason) {
     openModal(`<div class="acc" data-k="login"><h2>Sign in</h2>
       <p class="acc-sub">Keep your streak, results and settings on every device. <b>Optional:</b> you can always play without an account.</p>
       ${reason === "premium" ? `<div class="notice">⭐ Sign in first, so Premium is tied to your account on every device.</div>` : ""}
-      <button class="acc-google" id="accGoogle" type="button"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.1C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.2-13.5-10l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>
-      <div class="acc-or"><span>or</span></div>
+      ${googleOn() ? `<button class="acc-google" id="accGoogle" type="button"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.1C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.2-13.5-10l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>
+      <div class="acc-or"><span>or</span></div>` : ""}
       <form id="accEmailForm" class="optin-form" novalidate><label>Email<input name="email" type="email" placeholder="you@example.com" autocomplete="email" required></label>
       <button class="pill-btn primary" type="submit">Email me a sign-in link</button><p class="form-msg" id="accMsg" aria-live="polite"></p></form>
       <p class="acc-fine">We only use your email to sign you in and, if you submit photos, to reach you about them. <a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a></p></div>`, "account");
-    $("#accGoogle").onclick = signInGoogle;
+    if ($("#accGoogle")) $("#accGoogle").onclick = signInGoogle;
     $("#accEmailForm").onsubmit = async e => { e.preventDefault(); const em = e.target.email.value.trim(), msg = $("#accMsg");
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { msg.className = "form-msg bad"; msg.textContent = "Please enter a valid email."; return; }
       msg.className = "form-msg"; msg.textContent = "Sending…"; const err = await signInEmail(em);
@@ -1146,7 +1153,7 @@ function renderFeatureExtras() {
   const u = Cloud.user, ok = userVerified(u), done = !$("#featureDone").classList.contains("hidden");
   $("#ffGate").classList.toggle("hidden", ok || done); if (!done) $("#featureForm").classList.toggle("hidden", !ok);
   $("#ffGateText").textContent = u && !ok ? `Please verify your email (${u.email || "no email on this account"}) first: open the sign-in link we emailed you, then come back.`
-    : "To keep out spam, submissions need a free account with a verified email. Sign in with Google or a one-time email link, no password.";
+    : `To keep out spam, submissions need a free account with a verified email. Sign in with ${googleOn() ? "Google or " : ""}a one-time email link, no password.`;
   $("#ffGateBtn").textContent = u && !ok ? "Account" : "Log in to submit";
   if (ok) $("#ffSignedIn").innerHTML = `Signed in as <b>${esc(u.email)}</b>. We'll only use this email to reach you about your submission.`;
   const up = premiumOn() ? (isPremium() ? `<div class="ff-prio">⭐ You're Premium: your submission gets <b>priority review</b>.</div>`
