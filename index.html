@@ -6,14 +6,21 @@
 <title>WhereIsShe · A daily where-in-the-world game</title>
 <meta name="description" content="A daily GeoGuessr-style game: five photos of She somewhere in the world. Drop a pin, score up to 25,000.">
 <meta name="color-scheme" content="light dark">
+<link rel="canonical" href="https://whereisshe.gg/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="WhereIsShe">
+<meta property="og:url" content="https://whereisshe.gg/">
+<meta property="og:title" content="WhereIsShe · A daily where-in-the-world game">
+<meta property="og:description" content="Five photos, one world map. Drop a pin, score up to 25,000. A new day every day.">
+<meta name="twitter:card" content="summary">
 <script>
   // Apply saved/system theme before first paint (no flash)
   (function(){try{var t=JSON.parse(localStorage.getItem("wis.settings.v1")||"{}").theme||"system";
   if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t;}catch(e){}})();
 </script>
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=e9cac22b56">
-<link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css?v=e9cac22b56">
-<link rel="stylesheet" href="styles.css?v=e9cac22b56">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=d9f763ce24">
+<link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css?v=d9f763ce24">
+<link rel="stylesheet" href="styles.css?v=d9f763ce24">
 <!--
   ADSENSE: when approved, add the AdSense loader once here, e.g.
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
@@ -252,12 +259,12 @@
 <div class="toast" id="toast"></div>
 <input type="file" id="fileInput" accept=".json,.csv,.xlsx,.xls" hidden>
 
-<script src="vendor/leaflet/leaflet.js?v=e9cac22b56"></script>
-<script src="vendor/maplibre/maplibre-gl.js?v=e9cac22b56"></script>
-<script src="vendor/maplibre/leaflet-maplibre-gl.js?v=e9cac22b56"></script>
-<script src="tiles.js?v=e9cac22b56"></script>
-<script src="vendor/xlsx.full.min.js?v=e9cac22b56"></script>
-<script src="puzzles-data.js?v=e9cac22b56"></script>
-<script src="app.js?v=e9cac22b56"></script>
+<script src="vendor/leaflet/leaflet.js?v=d9f763ce24"></script>
+<script src="vendor/maplibre/maplibre-gl.js?v=d9f763ce24"></script>
+<script src="vendor/maplibre/leaflet-maplibre-gl.js?v=d9f763ce24"></script>
+<script src="tiles.js?v=d9f763ce24"></script>
+<script src="vendor/xlsx.full.min.js?v=d9f763ce24"></script>
+<script src="puzzles-data.js?v=d9f763ce24"></script>
+<script src="app.js?v=d9f763ce24"></script>
 </body>
 </html>
