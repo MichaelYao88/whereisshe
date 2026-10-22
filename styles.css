@@ -393,3 +393,7 @@ html.map-open,html.map-open body{overflow:hidden}
 @keyframes mutePulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.85),0 4px 18px rgba(0,0,0,.45)}70%{box-shadow:0 0 0 14px rgba(255,255,255,0),0 4px 18px rgba(0,0,0,.45)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0),0 4px 18px rgba(0,0,0,.45)}}
 @media (prefers-reduced-motion:reduce){.mute-btn.pulse{animation:none}}
 @media (max-width:760px){.mute-btn{left:10px;bottom:46px;min-height:46px;font-size:14px;padding:9px 16px 9px 12px;max-width:calc(55% - 20px)}}
+
+/* v9: preview mode banner (schedule.html "Play this day") */
+.preview-bar{margin:8px auto 0;max-width:1100px;padding:8px 14px;border-radius:12px;background:#fde68a;color:#422006;font-size:13px;font-weight:700;text-align:center}
+.preview-bar a{color:#422006;margin-left:10px;text-decoration:underline}

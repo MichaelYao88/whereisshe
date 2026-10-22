@@ -29,7 +29,7 @@ const CONFIG = {
 // Anything from earlier versions (v1 keys, other daily numbering, other puzzle content) is discarded, never resumed.
 const LS = { results: "wis.results.v2", stats: "wis.stats.v2", settings: "wis.settings.v1", custom: "wis.custom.v1" };
 const LEGACY_LS = ["wis.results.v1", "wis.stats.v1"];
-const BUILD = "afb18a461d";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
+const BUILD = "99c8838c52";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
 const BANDS = [[100, "🟩", "e-g"], [500, "🟨", "e-y"], [2000, "🟧", "e-o"], [Infinity, "🟥", "e-r"]];   // km thresholds
 
 // ================================================================
@@ -90,7 +90,7 @@ const fmtKm = km => km < 1 ? `${Math.round(km * 1000)} m` : km < 10 ? `${km.toFi
 // One row per round. Puzzle-level fields (daily_order, set, placeholder, featured_*, consent_on) are read from the
 // first row of each puzzle_id that has them. See README "Data format".
 const COLS = ["puzzle_id","daily_order","round","set","placeholder","featured_name","featured_handle","featured_ig_url","featured_pronoun","consent_on",
-  "media_type","image_url","video_url","poster_url","lat","lng","place_name","country","fun_fact","photo_date","credit","license","license_url","source_url","focus","focus_mobile"];
+  "media_type","image_url","video_url","poster_url","lat","lng","place_name","country","fun_fact","photo_date","credit","license","license_url","source_url","focus","focus_mobile","in_frame"];
 const str = v => { v = String(v ?? "").trim(); return v.endsWith(".0") ? v.slice(0, -2) : v; };
 const num = v => { const n = parseFloat(String(v ?? "").replace(/,/g, "")); return isFinite(n) ? n : null; };
 const yes = v => v === true || ["yes", "y", "true", "1"].includes(str(v).toLowerCase());
@@ -154,11 +154,32 @@ mq.addEventListener?.("change", () => settings.theme === "system" && applyTheme(
 // ================================================================ state
 const state = { mode: "daily", dateKey: todayKey(), puzzle: null, practiceIdx: 0, game: null, pin: null, busy: false };
 const puzzleForDay = n => { const pool = dailyPool(); return pool[((n % pool.length) + pool.length) % pool.length]; };
+// v9: the daily schedule is data (schedule.json -> window.WIS_SCHEDULE, edited with tools/schedule.py): a date pinned in
+// "dates" plays that puzzle; any other date falls back to "rotation" (the day after the last pinned date = rotation[0]).
+// A custom puzzle file loaded in Settings ignores the schedule and uses the old order-based rotation.
+const SCHED = window.WIS_SCHEDULE || null;
+if (SCHED && validKey(SCHED.epoch)) CONFIG.dailyEpoch = SCHED.epoch;
+function puzzleForDate(key) {
+  if (SCHED && !custom) {
+    const byId = id => ALL.find(p => p.id === id && !p.practiceOnly);
+    const pinned = SCHED.dates && SCHED.dates[key] && byId(SCHED.dates[key]); if (pinned) return pinned;
+    const rot = (SCHED.rotation || []).map(byId).filter(Boolean);
+    if (rot.length) {
+      const keys = Object.keys(SCHED.dates || {}).filter(validKey).sort(), last = keys[keys.length - 1];
+      const n = last && utc(key) > utc(last) ? Math.round((utc(key) - utc(last)) / 864e5) - 1 : dayNumber(key);
+      return rot[((n % rot.length) + rot.length) % rot.length];
+    }
+  }
+  return puzzleForDay(dayNumber(key));
+}
 // content hash (FNV-1a) of what a player actually guesses on: media + answer of each round, in order
 const puzzleHash = p => { if (p._h) return p._h; let h = 0x811c9dc5; const t = JSON.stringify(p.rounds.map(r => [r.media, r.img, r.video, r.lat, r.lng]));
   for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return (p._h = h.toString(36)); };
 const keyFor = (mode, dateKey, p) => mode === "practice" ? `p:${p.id}@${puzzleHash(p)}` : `d:${dateKey}:${p.id}@${puzzleHash(p)}`;
 const resultKey = () => keyFor(state.mode, state.dateKey, state.puzzle);
+// preview mode (schedule.html "Play this day"): progress lives only in memory, never in localStorage, stats or streaks
+const previewStore = {};
+const isPreview = () => state.mode === "preview";
 // a saved game is only used if it belongs to exactly this puzzle (id + content hash) and is internally consistent
 function validSaved(r, p) {
   if (!r || typeof r !== "object" || r.id !== p.id || r.h !== puzzleHash(p) || !Array.isArray(r.rounds)) return false;
@@ -171,10 +192,10 @@ function savedFor(key, p) {
   if (r && !validSaved(r, p)) { delete all[key]; save(LS.results, all); return null; }
   return r || null;
 }
-const getResult = () => savedFor(resultKey(), state.puzzle);
-const setResult = r => { const all = load(LS.results, {}); all[resultKey()] = { ...r, id: state.puzzle.id, h: puzzleHash(state.puzzle), at: Date.now() }; save(LS.results, all); };
+const getResult = () => isPreview() ? previewStore[resultKey()] || null : savedFor(resultKey(), state.puzzle);
+const setResult = r => { if (isPreview()) { previewStore[resultKey()] = { ...r, id: state.puzzle.id }; return; } const all = load(LS.results, {}); all[resultKey()] = { ...r, id: state.puzzle.id, h: puzzleHash(state.puzzle), at: Date.now() }; save(LS.results, all); };
 const isToday = () => state.mode === "daily";
-function linkHash() { return state.mode === "practice" ? `#p=${encodeURIComponent(state.puzzle.id)}` : `#d=${state.dateKey}`; }
+function linkHash() { return state.mode === "practice" ? `#p=${encodeURIComponent(state.puzzle.id)}` : isPreview() ? `#preview=${state.dateKey}` : `#d=${state.dateKey}`; }
 function setHash(h) { try { history.replaceState(null, "", h || location.pathname + location.search); } catch { location.hash = h; } }
 const totalOf = g => g.rounds.reduce((s, r) => s + r.pts, 0);
 
@@ -232,7 +253,13 @@ function renderHero() {
   const p = state.puzzle, n = dayNumber(state.dateKey) + 1;
   $("#heroNo").textContent = state.mode === "practice" ? `Practice ${state.practiceIdx + 1}/${ALL.length}` : `No. ${pad3(n)}`;
   $("#heroDate").textContent = state.mode === "practice" ? "Practice mode · doesn't count toward stats"
-    : `${CONFIG.brand} #${pad3(n)} · ${longDate(state.dateKey)}${isToday() ? "" : " · Archive"}`;
+    : `${CONFIG.brand} #${pad3(n)} · ${longDate(state.dateKey)}${isToday() ? "" : isPreview() ? " · Preview" : " · Archive"}`;
+  let bar = $("#previewBar");
+  if (isPreview()) {
+    if (!bar) { bar = document.createElement("div"); bar.id = "previewBar"; bar.className = "preview-bar"; $("#stage").before(bar); }
+    bar.innerHTML = `👀 Preview · No. ${pad3(n)} · ${esc(prettyDate(state.dateKey))} · progress isn't saved <a href="schedule.html">Schedule</a> <a href="#" id="previewExit">Exit</a>`;
+    $("#previewExit").onclick = e => { e.preventDefault(); goToday(); };
+  } else if (bar) bar.remove();
   const label = isToday() ? "Share today's puzzle" : "Share this puzzle";
   $("#shareChallengeTop").textContent = label + " ↗"; $("#shareChallengeBtn").textContent = label;
 }
@@ -263,7 +290,7 @@ function showRound(i, revealed) {
   $("#question").textContent = whereQ(p);   // name/handle only appears on the Meet her/him card after round 5
   showMedia(r, i);
   $("#phTag") && $("#phTag").classList.toggle("hidden", !p.placeholder);
-  if (p.featured) $("#credit").innerHTML = `<span class="who-hint">👀 Find out who ${W(p).subj} ${W(p).subj === "they" ? "are" : "is"} after round 5</span>`;
+  if (p.featured) $("#credit").innerHTML = `<span class="who-hint">${esc(whoHint(p))}</span>`;
   else $("#credit").textContent = `${r.media === "video" ? "Video" : "Photo"} credit is shown after you guess`;
   setDock("mini");
   $("#mapHint").textContent = compact.matches ? "Tap to open the map" : "Click the map to drop your pin";
@@ -397,7 +424,7 @@ function submitGuess() {
   if (g.rounds.length === CONFIG.rounds) {
     g.done = true; g.total = totalOf(g); g.emoji = g.rounds.map(x => band(x.dist)[1]).join("");
     if (isToday()) recordStats(g);
-    CommunityStats.submit({ puzzleId: p.id, day: state.dateKey, mode: state.mode, total: g.total, rounds: g.rounds });
+    if (!isPreview()) CommunityStats.submit({ puzzleId: p.id, day: state.dateKey, mode: state.mode, total: g.total, rounds: g.rounds });
   }
   setResult(g); revealRound(g.cur, true);
 }
@@ -412,7 +439,7 @@ function revealRound(i, animate) {
   $("#rvFact").innerHTML = r.fact ? `<b>Fun fact:</b> ${esc(r.fact)}` : "";
   // Featured days: no handle / IG link until the Meet her card after round 5
   $("#credit").innerHTML = $("#rvCredit").innerHTML = state.puzzle.featured
-    ? `${r.media === "video" ? "Video" : "Photo"} used with permission · <span class="who-hint">find out who ${W(state.puzzle).subj} ${W(state.puzzle).subj === "they" ? "are" : "is"} after round 5</span>` : creditHtml(r);
+    ? `${r.media === "video" ? "Video" : "Photo"} used with permission · <span class="who-hint">${esc(whoHint(state.puzzle))}</span>` : creditHtml(r);
   $("#mapHint").classList.add("gone");
   const nb = $("#nextRoundBtn");
   nb.textContent = i + 1 >= CONFIG.rounds ? "See results →" : "Next round →";
@@ -449,7 +476,7 @@ function showResults(scroll) {
     return `<div class="rrow"><span class="re">${band(x.dist)[1]}</span><span class="rp">${i + 1}. ${esc(r.place)}<small>${esc(r.country)} · ${fmtKm(x.dist)} away</small></span>
       <span class="rs">${n0(x.pts)}<small>pts</small></span>${r.fact ? `<span class="rf">${esc(r.fact)}</span>` : ""}</div>`; }).join("");
   renderMeetHer(p);
-  $("#nextBtn").textContent = state.mode === "practice" ? "Next puzzle →" : state.mode === "archive" ? "Back to archive →" : "More puzzles →";
+  $("#nextBtn").textContent = state.mode === "practice" ? "Next puzzle →" : state.mode === "archive" ? "Back to archive →" : isPreview() ? "Back to schedule →" : "More puzzles →";
   renderCommunity(p, t);
   $("#result").classList.remove("hidden");
   drawSummary(p, g);
@@ -520,34 +547,39 @@ function showView(v) {
   if (v !== "play") setDock("mini");      // never leave a fixed map overlay on top of another view
   if (v === "play" && map) setTimeout(() => map.invalidateSize(), 0);
 }
-function goToday() { state.mode = "daily"; state.dateKey = todayKey(); openPuzzle(puzzleForDay(dayNumber(state.dateKey))); }
+function goToday() { state.mode = "daily"; state.dateKey = todayKey(); openPuzzle(puzzleForDate(state.dateKey)); }
+function goPreview(key) {   // any date, past or future; nothing is written to storage
+  if (!validKey(key) || dayNumber(key) < 0) { toast("No such day"); return goToday(); }
+  state.mode = "preview"; state.dateKey = key; openPuzzle(puzzleForDate(key));
+}
 function goDate(key) {
   const today = todayKey();
   if (!validKey(key) || dayNumber(key) < 0) { toast("That puzzle doesn't exist"); return goToday(); }
   if (utc(key) > utc(today)) { toast("That puzzle isn't out yet 👀"); return goToday(); }   // never expose future dailies
   if (key === today) return goToday();
-  state.mode = "archive"; state.dateKey = key; openPuzzle(puzzleForDay(dayNumber(key)));
+  state.mode = "archive"; state.dateKey = key; openPuzzle(puzzleForDate(key));
 }
 function goPractice(idx) {
   state.mode = "practice";
   if (idx == null) idx = (dayNumber(todayKey()) + 1) % ALL.length;
   state.practiceIdx = ((idx % ALL.length) + ALL.length) % ALL.length; openPuzzle(ALL[state.practiceIdx]);
 }
-const dayLabel = p => p.featured ? `Featured day · ${W(p).subj === "they" ? "they're" : W(p).subj + "'s"} revealed after round 5` : "Custom day";
+const whoHint = p => `Who ${W(p).subj === "they" ? "are" : "is"} ${W(p).subj}? IG available later`;   // in-game reminder (handle only on the Meet card)
+const dayLabel = p => p.featured ? `Featured day · ${whoHint(p)}` : "Custom day";
 function goArchive() {
   showView("archive"); setHash("#archive");
   const today = todayKey(), last = dayNumber(today), rows = [];
   for (let n = last; n >= 0; n--) {          // only today and earlier; future dailies are never listed
-    const key = keyFromDay(n), p = puzzleForDay(n), mine = savedFor(keyFor("archive", key, p), p);
+    const key = keyFromDay(n), p = puzzleForDate(key), mine = savedFor(keyFor("archive", key, p), p);
     const badge = mine && mine.done ? `<span class="ar done">${n0(mine.total ?? totalOf(mine))}</span>` : mine && mine.rounds?.length ? `<span class="ar">${mine.rounds.length}/5</span>` : `<span class="ar">Play →</span>`;
-    rows.push(`<li><button class="arch ${n === last ? "today" : ""}" data-key="${key}"><span class="an">#${pad3(n + 1)}<small>${n === last ? "Today" : prettyDate(key).replace(/, \d{4}$/, "")}</small></span>
+    rows.push(`<li><button class="arch ${n === last ? "today" : ""}" data-key="${key}" data-id="${esc(p.id)}"><span class="an">#${pad3(n + 1)}<small>${n === last ? "Today" : prettyDate(key).replace(/, \d{4}$/, "")}</small></span>
       <span class="aq">📍 ${whereQ(p)}<small>${esc(dayLabel(p))}</small></span>${badge}</button></li>`);
   }
   $("#archiveList").innerHTML = rows.join("");
   $$(".arch").forEach(b => b.onclick = () => goDate(b.dataset.key));
   window.scrollTo({ top: 0 });
 }
-function next() { if (state.mode === "practice") goPractice(state.practiceIdx + 1); else if (state.mode === "archive") goArchive(); else goPractice(); }
+function next() { if (state.mode === "practice") goPractice(state.practiceIdx + 1); else if (state.mode === "archive") goArchive(); else if (isPreview()) location.href = "schedule.html"; else goPractice(); }
 
 // ================================================================ opt-in ("Feature me") + removal
 function goOptin() { showView("optin"); setHash("#optin"); window.scrollTo({ top: 0 }); }
@@ -681,7 +713,7 @@ async function handleFiles(files) {
   } catch (e) { console.error(e); toast("Couldn't read that file: " + e.message); }
 }
 window.WISLoadFiles = handleFiles;
-window.WIS = { Zoom, fitMedia, summaryMap: () => summaryMap, CONFIG, dailyPool, dockMode, scoreFor, isPerfect, haversineKm, band, resultText, puzzles: () => ALL, map: () => map };   // test hooks
+window.WIS = { Zoom, fitMedia, summaryMap: () => summaryMap, CONFIG, dailyPool, puzzleForDate, schedule: () => SCHED, mode: () => state.mode, dockMode, scoreFor, isPerfect, haversineKm, band, resultText, puzzles: () => ALL, map: () => map };   // test hooks
 
 // ================================================================ wire up
 $("#guessBtn").onclick = submitGuess; $("#nextRoundBtn").onclick = nextRound; $("#nextBtn").onclick = next;
@@ -718,7 +750,9 @@ document.addEventListener("keydown", e => {
 applyTheme();
 if (!ALL.length) { $("#question").textContent = "No puzzles found. Run build.py or load a puzzle file."; return; }
 function route() {
-  const h = location.hash, d = h.match(/d=(\d{4}-\d{2}-\d{2})/), p = h.match(/p=([^&]+)/);
+  const h = location.hash, d = h.match(/(?:^#|&)d=(\d{4}-\d{2}-\d{2})/), p = h.match(/(?:^#|&)p=([^&]+)/);
+  const pv = h.match(/preview=(\d{4}-\d{2}-\d{2})/) || (/[?&]preview=1/.test(location.search) && location.search.match(/[?&]date=(\d{4}-\d{2}-\d{2})/));
+  if (pv) return goPreview(pv[1]);
   if (h.startsWith("#archive")) return goArchive();
   if (h.startsWith("#optin")) return goOptin();
   if (d) return goDate(d[1]);
