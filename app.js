@@ -48,7 +48,7 @@ const CONFIG = {
 const LS = { results: "wis.results.v2", stats: "wis.stats.v2", settings: "wis.settings.v1", custom: "wis.custom.v1", welcome: "wis.welcome.v1", visits: "wis.visits.v1", promo: "wis.promo.v1",
   auth: "wis.auth.v1", sync: "wis.sync.v1", premium: "wis.premium.v1" };   // v11: Supabase session (cleared by "Clear my game data" = signed out here), sync status, Premium cache
 const LEGACY_LS = ["wis.results.v1", "wis.stats.v1"];
-const BUILD = "7754b1982b";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
+const BUILD = "fd29b2f433";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
 const BANDS = [[100, "🟩", "e-g"], [500, "🟨", "e-y"], [2000, "🟧", "e-o"], [Infinity, "🟥", "e-r"]];   // km thresholds
 
 // ================================================================
@@ -121,7 +121,7 @@ const pronounOf = v => { v = str(v).toLowerCase(); return v === "he" || v === "h
 const W = p => PRONOUNS[(p && p.featured && p.featured.pronoun) || "she"];
 const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
 // v10 heading: just the day code (+ daily No. on dated days). Never "Who is she?" (only the bottom reminder says that), never the handle.
-const dayTitle = p => state.mode === "practice" || !state.dateKey ? p.id : `${p.id} · No. ${pad3(dayNumber(state.dateKey) + 1)}`;
+const dayTitle = p => !state.dateKey ? p.id : `${p.id} · No. ${pad3(dayNumber(state.dateKey) + 1)}`;
 const whereQ = p => { const w = W(p); return `Where ${w.subj === "they" ? "are" : "is"} ${w.subj}?`; };
 // focus: where to centre the starting (cropped) view, "x,y" or [x,y] or {x,y} in 0-1 of the media; null = centre
 const parseFocus = v => { if (v == null || v === "") return null; let a = Array.isArray(v) ? v : typeof v === "object" ? [v.x, v.y] : String(v).split(/[ ,;]+/);
@@ -157,7 +157,7 @@ function parseRows(rows) {
 
 let custom = load(LS.custom, null);
 let ALL = parseRows((custom && custom.rows?.length) ? custom.rows : (window.WIS_PUZZLE_ROWS || []));
-const dailyPool = () => { const days = ALL.filter(p => !p.practiceOnly), real = days.filter(p => !p.placeholder);   // practice_only days never appear as dailies
+const dailyPool = () => { const days = ALL.filter(p => !p.practiceOnly), real = days.filter(p => !p.placeholder);   // practice_only rows (legacy column) are never played
   return CONFIG.includePlaceholderDays || !real.length ? days : real; };
 
 // ================================================================ settings + theme
@@ -173,7 +173,7 @@ function applyTheme() {
 mq.addEventListener?.("change", () => settings.theme === "system" && applyTheme());
 
 // ================================================================ state
-const state = { mode: "daily", dateKey: todayKey(), puzzle: null, practiceIdx: 0, game: null, pin: null, busy: false };
+const state = { mode: "daily", dateKey: todayKey(), puzzle: null, game: null, pin: null, busy: false };   // mode: daily | archive | preview (v11: Practice removed)
 const puzzleForDay = n => { const pool = dailyPool(); return pool[((n % pool.length) + pool.length) % pool.length]; };
 // v9: the daily schedule is data (schedule.json -> window.WIS_SCHEDULE, edited with tools/schedule.py): a date pinned in
 // "dates" plays that puzzle; any other date falls back to "rotation" (the day after the last pinned date = rotation[0]).
@@ -196,7 +196,7 @@ function puzzleForDate(key) {
 // content hash (FNV-1a) of what a player actually guesses on: media + answer of each round, in order
 const puzzleHash = p => { if (p._h) return p._h; let h = 0x811c9dc5; const t = JSON.stringify(p.rounds.map(r => [r.media, r.img, r.video, r.lat, r.lng]));
   for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return (p._h = h.toString(36)); };
-const keyFor = (mode, dateKey, p) => mode === "practice" ? `p:${p.id}@${puzzleHash(p)}` : `d:${dateKey}:${p.id}@${puzzleHash(p)}`;
+const keyFor = (mode, dateKey, p) => `d:${dateKey}:${p.id}@${puzzleHash(p)}`;   // old "p:" (Practice) saves are left alone and simply never read
 const resultKey = () => keyFor(state.mode, state.dateKey, state.puzzle);
 // preview mode (schedule.html "Play this day"): progress lives only in memory, never in localStorage, stats or streaks
 const previewStore = {};
@@ -216,7 +216,7 @@ function savedFor(key, p) {
 const getResult = () => isPreview() ? previewStore[resultKey()] || null : savedFor(resultKey(), state.puzzle);
 const setResult = r => { if (isPreview()) { previewStore[resultKey()] = { ...r, id: state.puzzle.id }; return; } const all = load(LS.results, {}); all[resultKey()] = { ...r, id: state.puzzle.id, h: puzzleHash(state.puzzle), at: Date.now() }; save(LS.results, all); };
 const isToday = () => state.mode === "daily";
-function linkHash() { return state.mode === "practice" ? `#p=${encodeURIComponent(state.puzzle.id)}` : isPreview() ? `#preview=${state.dateKey}` : `#d=${state.dateKey}`; }
+function linkHash() { return isPreview() ? `#preview=${state.dateKey}` : `#d=${state.dateKey}`; }
 function setHash(h) { try { history.replaceState(null, "", h || location.pathname + location.search); } catch { location.hash = h; } }
 const totalOf = g => g.rounds.reduce((s, r) => s + r.pts, 0);
 
@@ -272,14 +272,14 @@ function drawReveal(guess, ans, animate = true) {
 // ================================================================ rendering
 function renderHero() {
   const p = state.puzzle, n = dayNumber(state.dateKey) + 1;
-  $("#heroNo").textContent = state.mode === "practice" ? `Practice ${state.practiceIdx + 1}/${ALL.length}` : `No. ${pad3(n)}`;
-  $("#heroDate").textContent = state.mode === "practice" ? "Practice mode · doesn't count toward stats"
-    : `${CONFIG.brand} #${pad3(n)} · ${longDate(state.dateKey)}${isToday() ? "" : isPreview() ? " · Preview" : " · Archive"}`;
+  $("#heroNo").textContent = `No. ${pad3(n)}`;
+  $("#barCode").textContent = p.id; $("#barNo").textContent = `\u00a0· No. ${pad3(n)}`;
+  $("#heroDate").textContent = `${CONFIG.brand} #${pad3(n)} · ${longDate(state.dateKey)}${isToday() ? "" : isPreview() ? " · Preview" : " · Archive"}`;
   let bar = $("#previewBar");
   if (isPreview()) {
     if (!bar) { bar = document.createElement("div"); bar.id = "previewBar"; bar.className = "preview-bar"; $("#stage").before(bar); }
     bar.innerHTML = `👀 Preview · No. ${pad3(n)} · ${esc(prettyDate(state.dateKey))} · progress isn't saved <a href="schedule.html">Schedule</a> <a href="#" id="previewExit">Exit</a>`;
-    $("#previewExit").onclick = e => { e.preventDefault(); goToday(); };
+    $("#previewExit").onclick = e => { e.preventDefault(); goToday(); }; setTimeout(fitStage, 0);
   } else if (bar) bar.remove();
   const label = isToday() ? "Share today's puzzle" : "Share this puzzle";
   $("#shareChallengeTop").textContent = label + " ↗"; $("#shareChallengeBtn").textContent = label;
@@ -486,13 +486,30 @@ function setMuteLabel() {
   const v = $("#video"), b = $("#muteBtn");
   b.innerHTML = v.muted ? `<span class="mi" aria-hidden="true">🔇</span><span class="mt">Tap for sound</span>` : `<span class="mi" aria-hidden="true">🔊</span><span class="mt">Sound on</span>`;
   b.setAttribute("aria-pressed", String(!v.muted)); b.setAttribute("aria-label", v.muted ? "Sound off. Tap for sound" : "Sound on. Tap to mute");
-  b.classList.toggle("on", !v.muted);
+  b.classList.toggle("on", !v.muted); setSoundBtn();
 }
 // a brief pulse when a muted video round starts, so the control is noticed
 function pulseMute() { const b = $("#muteBtn"); b.classList.remove("pulse"); if (!$("#video").muted) return; void b.offsetWidth; b.classList.add("pulse"); }
 function toggleMute() {
   const v = $("#video"); v.muted = !v.muted; settings.sound = !v.muted; saveSettings();   // remembered across rounds and days
   if (v.paused) v.play().catch(() => {}); $("#muteBtn").classList.remove("pulse"); setMuteLabel();
+}
+// phones: size the stage to what's left of the first screen (top bar + ad above it can change, e.g. Premium removes the ad)
+function fitStage() {
+  const st = $("#stage"); if (!st || st.classList.contains("hidden") || $("#playView").classList.contains("hidden")) return;
+  const t = Math.round(st.getBoundingClientRect().top + scrollY), cur = document.documentElement.style.getPropertyValue("--stage-top");
+  if (cur !== t + "px") { document.documentElement.style.setProperty("--stage-top", t + "px"); if (typeof fitMedia === "function") try { fitMedia(); } catch {} if (map) map.invalidateSize(); }
+}
+// top-bar sound toggle (works on photo rounds too: it sets the default for the next clip)
+function toggleSound() {
+  const v = $("#video");
+  if (!v.classList.contains("hidden")) return toggleMute();
+  settings.sound = !settings.sound; saveSettings(); setSoundBtn(); toast(settings.sound ? "🔊 Sound on for video rounds" : "🔇 Sound off");
+}
+function setSoundBtn() {
+  const b = $("#soundBtn"); if (!b) return; const v = $("#video"), on = !v.classList.contains("hidden") ? !v.muted : !!settings.sound;
+  b.querySelector(".tb-ic").textContent = on ? "🔊" : "🔇"; b.setAttribute("aria-pressed", String(on));
+  b.setAttribute("aria-label", on ? "Sound on. Tap to mute" : "Sound off. Tap for sound"); b.classList.toggle("on", on);
 }
 
 function submitGuess() {
@@ -555,7 +572,7 @@ function showResults(scroll) {
     return `<div class="rrow"><span class="re">${band(x.dist)[1]}</span><span class="rp">${i + 1}. ${esc(r.place)}<small>${esc(r.country)} · ${fmtKm(x.dist)} away</small></span>
       <span class="rs">${n0(x.pts)}<small>pts</small></span>${r.fact ? `<span class="rf">${esc(r.fact)}</span>` : ""}</div>`; }).join("");
   renderMeetHer(p);
-  $("#nextBtn").textContent = state.mode === "practice" ? "Next puzzle →" : state.mode === "archive" ? "Back to archive →" : isPreview() ? "Back to schedule →" : "More puzzles →";
+  $("#nextBtn").textContent = state.mode === "archive" ? "Back to archive →" : isPreview() ? "Back to schedule →" : "Play past days →";
   renderCommunity(p, t);
   $("#result").classList.remove("hidden");
   drawSummary(p, g);
@@ -606,7 +623,7 @@ function currentStreak() { const s = load(LS.stats, null); if (!s) return 0; con
 
 // ================================================================ sharing
 function shareUrl() { return CONFIG.siteUrl.replace(/#.*$/, "") + linkHash(); }
-function shareTitle() { return state.mode === "practice" ? `${CONFIG.brand} practice` : `${CONFIG.brand} #${pad3(dayNumber(state.dateKey) + 1)}`; }
+function shareTitle() { return `${CONFIG.brand} #${pad3(dayNumber(state.dateKey) + 1)}`; }
 function challengeText() { return `${shareTitle()} 📍\nFive photos. One ${W(state.puzzle).noun}. ${whereQ(state.puzzle).replace("Where ", "Where in the world ")}\n${shareUrl()}`; }
 function resultText() {
   const g = getResult(); if (!g || !g.done) return "";
@@ -623,9 +640,10 @@ async function doShare(text) {
 // ================================================================ views / navigation
 function showView(v) {
   $("#playView").classList.toggle("hidden", v !== "play"); $("#archiveView").classList.toggle("hidden", v !== "archive"); $("#optinView").classList.toggle("hidden", v !== "optin");
-  const tab = v === "optin" ? "" : v === "archive" ? "archive" : state.mode === "practice" ? "practice" : state.mode === "archive" ? "archive" : "today";
+  const tab = v === "optin" ? "" : v === "archive" ? "archive" : state.mode === "archive" ? "archive" : "today";
   $$(".tab").forEach(b => b.classList.toggle("active", b.dataset.view === tab));
   if (v !== "play") setDock("mini");      // never leave a fixed map overlay on top of another view
+  if (v === "play") fitStage();
   if (v === "play" && map) setTimeout(() => map.invalidateSize(), 0);
 }
 function goToday() { state.mode = "daily"; state.dateKey = todayKey(); openPuzzle(puzzleForDate(state.dateKey)); }
@@ -640,10 +658,10 @@ function goDate(key) {
   if (key === today) return goToday();
   state.mode = "archive"; state.dateKey = key; openPuzzle(puzzleForDate(key));
 }
-function goPractice(idx) {
-  state.mode = "practice";
-  if (idx == null) idx = (dayNumber(todayKey()) + 1) % ALL.length;
-  state.practiceIdx = ((idx % ALL.length) + ALL.length) % ALL.length; openPuzzle(ALL[state.practiceIdx]);
+// v11: Practice is gone. An old "#p=<id>" link opens the latest past day that played that puzzle (else today).
+function goLegacyPuzzle(id) {
+  for (let n = dayNumber(todayKey()); n >= 0; n--) { const k = keyFromDay(n); if (puzzleForDate(k).id === id) return goDate(k); }
+  goToday();
 }
 const whoHint = p => `Who ${W(p).subj === "they" ? "are" : "is"} ${W(p).subj}? Find out after the game.`;   // in-game reminder (handle only on the Meet card)
 const dayLabel = p => p.featured ? `Featured day · ${whoHint(p)}` : "Custom day";
@@ -660,7 +678,7 @@ function goArchive() {
   $$(".arch").forEach(b => b.onclick = () => goDate(b.dataset.key));
   window.scrollTo({ top: 0 });
 }
-function next() { if (state.mode === "practice") goPractice(state.practiceIdx + 1); else if (state.mode === "archive") goArchive(); else if (isPreview()) location.href = "schedule.html"; else goPractice(); }
+function next() { if (state.mode === "archive") goArchive(); else if (isPreview()) location.href = "schedule.html"; else goArchive(); }
 
 // ================================================================ opt-in ("Feature me") + removal
 function goOptin() { showView("optin"); setHash("#optin"); setupFeatureForm(); window.scrollTo({ top: 0 }); }
@@ -721,9 +739,8 @@ function statsModal() {
   if ($("#statsSignIn")) $("#statsSignIn").onclick = () => accountModal();
 }
 function menuModal() {
-  openModal(`<h2>Menu</h2><div class="menu-list">
+  openModal(`<h2>Settings &amp; more</h2><div class="menu-list">
     <button id="mArchive">🗓 Archive<small>Every past daily</small></button>
-    <button id="mList">🗂 All puzzles (practice)<small>Pick any day to play</small></button>
     ${accountsOn() ? `<button id="mAccount">${Cloud.user ? "👤 Your account" : "👤 Sign in"}<small>${Cloud.user ? esc(Cloud.user.email || "") : "Optional: sync stats across devices"}</small></button>` : ""}
     ${premiumOn() ? `<button id="mPremium">⭐ ${isPremium() ? "Premium" : "Go Premium"}<small>${isPremium() ? "No ads · priority review" : "No ads + priority review for submissions"}</small></button>` : ""}
     <button id="mOptin">💌 Feature me<small>${submissionsOn() ? "Submit your own photos to be featured" : 'Opt in to be a future "She"'}</small></button>
@@ -731,7 +748,7 @@ function menuModal() {
     <button id="mHow">❓ How to play</button>
     <button id="mAbout">📚 About &amp; photo credits</button>
     <button id="mClear">🧹 Clear my game data<small>Progress, scores, streak and settings in this browser</small></button></div>`);
-  $("#mArchive").onclick = () => { closeModal(); goArchive(); }; $("#mList").onclick = listModal; $("#mSettings").onclick = settingsModal;
+  $("#mArchive").onclick = () => { closeModal(); goArchive(); }; $("#mSettings").onclick = settingsModal;
   $("#mHow").onclick = howModal; $("#mAbout").onclick = aboutModal; $("#mOptin").onclick = () => { closeModal(); goOptin(); };
   $("#mClear").onclick = clearDataModal;
   if ($("#mAccount")) $("#mAccount").onclick = () => accountModal();
@@ -798,11 +815,6 @@ function settingsModal() {
   }));
   $("#mLoad").onclick = () => $("#fileInput").click();
   if ($("#mReset")) $("#mReset").onclick = () => { localStorage.removeItem(LS.custom); custom = null; ALL = parseRows(window.WIS_PUZZLE_ROWS || []); closeModal(); toast("Built-in puzzles restored"); goToday(); };
-}
-function listModal() {
-  openModal(`<h2>All puzzles (${ALL.length})</h2><div class="plist">${ALL.map((p, i) => { const r = savedFor(keyFor("practice", null, p), p);
-    return `<button data-i="${i}"><span>📍 ${esc(p.id)} · ${esc(dayLabel(p))}</span><span class="done">${r && r.done ? n0(totalOf(r)) : ""}</span></button>`; }).join("")}</div>`);
-  $$(".plist button").forEach(b => b.onclick = () => { closeModal(); goPractice(+b.dataset.i); });
 }
 function howModal() {
   openModal(`<h2>How to play</h2>
@@ -972,11 +984,11 @@ async function refreshProfile() {
   applyPremium(); renderAccountUI(); return Cloud.profile;
 }
 let adTopNode = null;
-function applyPremium() {
+function applyPremium() { setTimeout(fitStage, 0);
   const on = isPremium(); document.documentElement.classList.toggle("is-premium", on);
   const ad = $("#adTop");
   if (on && ad) { adTopNode = ad; ad.remove(); }                                   // Premium: the ad slot is removed, not just hidden
-  else if (!on && !ad && adTopNode) { $("nav.tabs").before(adTopNode); }
+  else if (!on && !ad && adTopNode) { $("#topbar").after(adTopNode); }
 }
 function checkoutUrl() {
   const u = new URL(CONFIG.premium.checkoutUrl, location.href);
@@ -1228,11 +1240,11 @@ async function handleFiles(files) {
     const parsed = parseRows(rows);
     if (!parsed.length) { toast("No valid days found. Each day needs 5 rounds (and real days need featured_handle + consent_on)."); return; }
     custom = { name: name.join(", "), rows, loadedAt: Date.now() }; save(LS.custom, custom); ALL = parsed;
-    closeModal(); toast(`Loaded ${parsed.length} days`); goPractice(0);
+    closeModal(); toast(`Loaded ${parsed.length} days`); goToday();
   } catch (e) { console.error(e); toast("Couldn't read that file: " + e.message); }
 }
 window.WISLoadFiles = handleFiles;
-window.WIS = { videoState: () => ({ state: VS.state, tries: VS.tries, round: VS.round, src: VS.url, log: VS.log.slice(), preload: preloadNext.el ? preloadNext.el.dataset.src : null }), crossPromoCheck, visits: () => load(LS.visits, 0), Zoom, fitMedia, summaryMap: () => summaryMap, CONFIG, dailyPool, puzzleForDate, schedule: () => SCHED, mode: () => state.mode, dockMode, scoreFor, isPerfect, haversineKm, band, resultText, puzzles: () => ALL, map: () => map,
+window.WIS = { videoState: () => ({ state: VS.state, tries: VS.tries, round: VS.round, src: VS.url, log: VS.log.slice(), preload: preloadNext.el ? preloadNext.el.dataset.src : null }), crossPromoCheck, visits: () => load(LS.visits, 0), Zoom, fitMedia, summaryMap: () => summaryMap, CONFIG, dailyPool, puzzleForDate, schedule: () => SCHED, mode: () => state.mode, dockMode, puzzleHash, scoreFor, isPerfect, haversineKm, band, resultText, puzzles: () => ALL, map: () => map,
   features: () => ({ accounts: accountsOn(), premium: premiumOn(), submissions: submissionsOn(), ads: adsOn() }),
   cloud: () => ({ state: Cloud.state, user: Cloud.user ? { id: Cloud.user.id, email: Cloud.user.email } : null, premium: isPremium(), profile: Cloud.profile, sync: load(LS.sync, null), syncing: !!Cloud.syncing }),
   syncNow, mergeStats, mergeResults, statsFromDays, ledgerFromResults, feature: () => ({ files: FF.files.length, gate: !$("#ffGate").classList.contains("hidden"), form: !$("#featureForm").classList.contains("hidden") }) };   // test hooks
@@ -1252,7 +1264,7 @@ $("#miniCatch").onclick = e => { e.stopPropagation(); openFullMap(); };     // m
 $("#closeMapBtn").onclick = e => { e.stopPropagation(); closeFullMap(); };
 $("#dock").addEventListener("transitionend", e => { if (e.target.classList.contains("map-area") && map) map.invalidateSize(); });   // hover-grow
 $("#dock").addEventListener("mouseenter", () => { if (dockMode() === "mini") setTimeout(() => map && map.invalidateSize(), 200); });
-window.addEventListener("resize", () => { if (map) map.invalidateSize(); if (summaryMap) summaryMap.invalidateSize(); });
+window.addEventListener("resize", () => { fitStage(); if (map) map.invalidateSize(); if (summaryMap) summaryMap.invalidateSize(); });
 $("#muteBtn").onclick = e => { e.stopPropagation(); toggleMute(); };
 $("#video").onclick = () => { const v = $("#video"); if (v.paused) v.play().catch(() => {}); };
 $("#zoomBtn").onclick = () => { $("#lightImg").src = $("#photo").src; $("#lightbox").classList.remove("hidden"); };
@@ -1261,7 +1273,9 @@ $("#optinForm").onsubmit = submitOptin;
 $("#clearLink").onclick = e => { e.preventDefault(); clearDataModal(); };
 if (/[?&]cleared=/.test(location.search)) { try { history.replaceState(null, "", location.pathname + location.hash); } catch {} setTimeout(() => toast("Game data cleared"), 300); }
 $("#fileInput").onchange = e => { const f = [...e.target.files]; if (f.length) handleFiles(f); e.target.value = ""; };
-$$(".tab").forEach(b => b.onclick = () => b.dataset.view === "today" ? goToday() : b.dataset.view === "archive" ? goArchive() : goPractice());
+$$(".tab").forEach(b => b.onclick = () => b.dataset.view === "archive" ? goArchive() : goToday());
+$("#barTitle").onclick = e => { e.preventDefault(); goToday(); };
+$("#soundBtn").onclick = () => toggleSound();
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && !$("#welcome").classList.contains("hidden")) { chooseSound("skip"); return; }
   if (e.key === "Escape") { closeModal(); $("#lightbox").classList.add("hidden"); closeFullMap(); return; }
@@ -1286,11 +1300,11 @@ function route() {
   if (h.startsWith("#archive")) return goArchive();
   if (h.startsWith("#optin")) return goOptin();
   if (d) return goDate(d[1]);
-  if (p) { const i = ALL.findIndex(x => x.id === decodeURIComponent(p[1])); if (i >= 0) return goPractice(i); }
+  if (p) return goLegacyPuzzle(decodeURIComponent(p[1]));
   goToday();
 }
 window.addEventListener("hashchange", () => { if (location.hash !== linkHash()) route(); });
-route();
+route(); fitStage(); setSoundBtn();
 if (!welcomeDone() && !isPreview() && !location.hash.startsWith("#optin")) showWelcome();
 else setTimeout(maybeCrossPromo, 1500);
 cloudInit();   // v11: no-op unless CONFIG.backend.enabled
