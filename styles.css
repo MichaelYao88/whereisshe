@@ -486,7 +486,8 @@ body.welcome-open{overflow:hidden}
 .prem-card{text-align:center}
 .prem-badge{display:inline-block;padding:5px 12px;border-radius:999px;background:linear-gradient(135deg,#ffe58a,#ffc94d);color:#3b2a00;font-weight:800;font-size:11px;letter-spacing:.14em;text-transform:uppercase}
 .prem-card h2{margin:10px 0 4px}
-.prem-price{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-bottom:12px}
+.prem-price{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-bottom:2px}
+.prem-billing{font-size:13px;opacity:.75;margin-bottom:12px}
 .prem-list{list-style:none;padding:0;margin:0 0 14px;text-align:left;display:flex;flex-direction:column;gap:8px}
 .prem-list li{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;background:var(--surface);font-size:14px;font-weight:600}
 .prem-test{font-size:12.5px;padding:8px 12px;border-radius:12px;background:rgba(245,158,11,.14);color:var(--ink);margin:0 0 12px}

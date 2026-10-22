@@ -34,7 +34,7 @@ const CONFIG = {
   backend: { enabled: false, supabaseUrl: "https://xhaduveumhtikwoekxdi.supabase.co", anonKey: "sb_publishable_Aoj_rFQBnwqahuEpCJFqww_9umiFFxx" },
   // Lemon Squeezy checkout link of the Premium variant (Share -> checkout URL), e.g. https://STORE.lemonsqueezy.com/buy/<uuid>.
   // testMode: true while using the store's test-mode link (shows a "no real charge" note); set false after going live.
-  premium: { enabled: false, testMode: true, checkoutUrl: "https://mikelyaps.lemonsqueezy.com/checkout/buy/ca1efbfa-7ab8-4fe6-b96a-694c1f5691fa", price: "" },   // price: display text, e.g. "US$2.99 / month" (TBD by Michael)
+  premium: { enabled: false, testMode: true, checkoutUrl: "https://mikelyaps.lemonsqueezy.com/checkout/buy/ca1efbfa-7ab8-4fe6-b96a-694c1f5691fa", price: "From $2.67/month · suggested $6.70", billing: "Monthly subscription · cancel anytime" },   // pay-what-you-want monthly (min $2.67, suggested $6.70)
   // "Feature me" v11 form (links and/or uploads). Login required; limits enforced by the submit_feature() SQL function.
   submissions: { enabled: false, maxFiles: 5, maxFileMB: 25, maxLinks: 10 },
   // Google AdSense for the post-round-5 unit. Never loaded for Premium players. slot "" = keep the placeholder.
@@ -48,7 +48,7 @@ const CONFIG = {
 const LS = { results: "wis.results.v2", stats: "wis.stats.v2", settings: "wis.settings.v1", custom: "wis.custom.v1", welcome: "wis.welcome.v1", visits: "wis.visits.v1", promo: "wis.promo.v1",
   auth: "wis.auth.v1", sync: "wis.sync.v1", premium: "wis.premium.v1" };   // v11: Supabase session (cleared by "Clear my game data" = signed out here), sync status, Premium cache
 const LEGACY_LS = ["wis.results.v1", "wis.stats.v1"];
-const BUILD = "fd29b2f433";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
+const BUILD = "e9cac22b56";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
 const BANDS = [[100, "🟩", "e-g"], [500, "🟨", "e-y"], [2000, "🟧", "e-o"], [Infinity, "🟥", "e-r"]];   // km thresholds
 
 // ================================================================
@@ -1092,12 +1092,12 @@ function premiumModal() {
   const c = CONFIG.premium, prem = isPremium(), u = Cloud.user;
   const label = prem ? "You're Premium ⭐" : !u ? "Sign in to go Premium" : !c.checkoutUrl ? "Checkout opens soon" : `Go Premium${c.price ? ` · ${esc(c.price)}` : ""}`;
   openModal(`<div class="prem-card" data-k="premium"><div class="prem-badge">⭐ Premium</div><h2>WhereIsShe Premium</h2>
-    <div class="prem-price">${c.price ? esc(c.price) : "Price coming soon"}</div>
+    <div class="prem-price">${c.price ? esc(c.price) : "Price coming soon"}</div>${c.billing ? `<div class="prem-billing">${esc(c.billing)}</div>` : ""}
     <ul class="prem-list"><li><span>🚫</span>No ads: no banner and no ad after round 5</li><li><span>⚡</span>Priority review for your Feature me submissions</li>
       <li><span>☁️</span>On every device you sign in on</li><li><span>❤️</span>Supports a small indie game</li></ul>
     ${c.testMode ? `<p class="prem-test">🧪 Test mode: no real charge. Use the Lemon Squeezy test card 4242 4242 4242 4242.</p>` : ""}
     <button class="pill-btn primary prem-go" id="premGo" type="button" ${prem || (u && !c.checkoutUrl) ? "disabled" : ""}>${label}</button>
-    <p class="prem-fine">Payments are handled by Lemon Squeezy, our merchant of record. <a href="terms.html" target="_blank" rel="noopener">Terms</a> · <a href="refund.html" target="_blank" rel="noopener">Refunds</a> · <a href="privacy.html" target="_blank" rel="noopener">Privacy</a></p></div>`, "premium");
+    <p class="prem-fine">Renews monthly until you cancel; cancel anytime from your Lemon Squeezy receipt email. Payments are handled by Lemon Squeezy, our merchant of record. <a href="terms.html" target="_blank" rel="noopener">Terms</a> · <a href="refund.html" target="_blank" rel="noopener">Refunds</a> · <a href="privacy.html" target="_blank" rel="noopener">Privacy</a></p></div>`, "premium");
   $("#premGo").onclick = goPremium;
 }
 
@@ -1150,7 +1150,7 @@ function renderFeatureExtras() {
   $("#ffGateBtn").textContent = u && !ok ? "Account" : "Log in to submit";
   if (ok) $("#ffSignedIn").innerHTML = `Signed in as <b>${esc(u.email)}</b>. We'll only use this email to reach you about your submission.`;
   const up = premiumOn() ? (isPremium() ? `<div class="ff-prio">⭐ You're Premium: your submission gets <b>priority review</b>.</div>`
-    : `<div class="upsell"><div><b>⭐ Premium submitters get priority review</b><small>Plus no ads. ${CONFIG.premium.price ? esc(CONFIG.premium.price) : ""}</small></div><button class="pill-btn primary" type="button" data-go-premium>Go Premium</button></div>`) : "";
+    : `<div class="upsell"><div><b>⭐ Premium submitters get priority review</b><small>Plus no ads. ${[CONFIG.premium.price, CONFIG.premium.billing].filter(Boolean).map(esc).join(" · ")}</small></div><button class="pill-btn primary" type="button" data-go-premium>Go Premium</button></div>`) : "";
   $$("#ffUpsell, #ffDoneUpsell, #ffGateUpsell").forEach(b => { b.innerHTML = b.id !== "ffUpsell" && isPremium() ? "" : up; });
   $$("[data-go-premium]").forEach(b => b.onclick = goPremium);
 }
