@@ -11,9 +11,9 @@
   (function(){try{var t=JSON.parse(localStorage.getItem("wis.settings.v1")||"{}").theme||"system";
   if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t;}catch(e){}})();
 </script>
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=d8ddd76386">
-<link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css?v=d8ddd76386">
-<link rel="stylesheet" href="styles.css?v=d8ddd76386">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=7632a6d25a">
+<link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css?v=7632a6d25a">
+<link rel="stylesheet" href="styles.css?v=7632a6d25a">
 <!--
   ADSENSE: when approved, add the AdSense loader once here, e.g.
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
@@ -53,7 +53,7 @@
   <section id="playView">
     <article class="hero" id="hero">
       <div class="hero-top"><a class="hero-brand" href="#" id="homeLink" aria-label="WhereIsShe home">WhereIsShe</a><span class="hero-kind" id="heroKind">Round 1 / 5</span><span id="heroNo">No. 001</span></div>
-      <h1 id="question">Where is she?</h1>
+      <h1 id="question">WhereIsShe</h1>
       <div class="hero-date" id="heroDate"></div>
     </article>
 
@@ -64,6 +64,7 @@
         <span class="zoom-hint" id="zoomHint">Drag to look around · double-tap to zoom</span>
         <!-- Video rounds (media_type "video"): muted + autoplay + loop + playsinline so it autoplays on iOS/Android -->
         <video id="video" class="hidden" muted autoplay loop playsinline webkit-playsinline preload="auto" disablepictureinpicture aria-label="Where is she? Round video"></video>
+        <div class="vid-loading hidden" id="vidLoading" role="status" aria-live="polite"><span class="vl-spin" aria-hidden="true"></span><span class="vl-text">Loading clip…</span><button class="vl-btn hidden" type="button">↻ Retry</button></div>
       </div>
       <div class="hud">
         <span class="hud-pill tries" id="roundDots"></span>
@@ -175,6 +176,36 @@
   </div>
 </div>
 
+<div class="welcome hidden" id="welcome" role="dialog" aria-modal="true" aria-labelledby="welTitle">
+  <div class="wel-card">
+    <figure class="wel-anim" id="welAnim" aria-hidden="true">
+      <svg viewBox="0 0 220 112" width="220" height="112" focusable="false">
+        <defs><clipPath id="wa-clip"><rect x="0" y="0" width="220" height="112" rx="14"/></clipPath></defs>
+        <g clip-path="url(#wa-clip)">
+          <rect width="220" height="112" fill="#8ccbe0"/>
+          <path d="M-6 70 C 18 44, 44 40, 62 52 S 96 76, 118 58 S 150 30, 176 36 S 214 52, 230 40 L230 120 L-6 120 Z" fill="#a9d99b"/>
+          <path d="M120 -6 C 132 14, 160 16, 178 10 S 214 4, 230 14 L230 -6 Z" fill="#a9d99b"/>
+          <path d="M0 28H220M0 56H220M0 84H220M44 0V112M88 0V112M132 0V112M176 0V112" stroke="#ffffff" stroke-opacity=".22" stroke-width="1"/>
+          <line class="wa-line" x1="70" y1="60" x2="152" y2="40" stroke="#14532d" stroke-width="2.4" stroke-dasharray="5 4" stroke-linecap="round"/>
+          <g class="wa-true"><circle cx="152" cy="40" r="6.5" fill="#22c55e" stroke="#fff" stroke-width="2.2"/><circle cx="152" cy="40" r="2.2" fill="#fff"/></g>
+          <g class="wa-pin"><path d="M70 60 C 64 50, 61 46, 61 41 A 9 9 0 1 1 79 41 C 79 46, 76 50, 70 60 Z" fill="#ef4444" stroke="#fff" stroke-width="1.8"/><circle cx="70" cy="41" r="3.2" fill="#fff"/></g>
+          <circle class="wa-ripple" cx="70" cy="60" r="10" fill="none" stroke="#fff" stroke-width="2.5"/>
+          <g class="wa-score"><rect x="122" y="8" width="62" height="20" rx="10" fill="#3fbf5a"/><text x="153" y="22.5" text-anchor="middle" font-size="12" font-weight="800" fill="#06210f" font-family="system-ui, sans-serif">+5,000</text></g>
+          <g class="wa-cursor"><path d="M0 0 L0 17 L4.6 12.8 L7.6 19.6 L10.6 18.3 L7.7 11.6 L13.6 11.4 Z" fill="#fff" stroke="#111" stroke-width="1.3" stroke-linejoin="round"/></g>
+          <g class="wa-finger"><circle r="9" fill="#fff" fill-opacity=".85" stroke="#111" stroke-width="1.3"/></g>
+        </g>
+      </svg>
+      <figcaption class="wel-anim-cap">Guess where each photo was taken: drop a pin, score up to 5,000.</figcaption>
+    </figure>
+    <h2 class="wel-title" id="welTitle">Welcome to WhereIsShe!</h2>
+    <p class="wel-sub" id="welSub">Every day, 5 photos and clips of someone somewhere on Earth.<br>Look for clues and guess where she is!</p>
+    <p class="wel-note">📶 Clips can take a few seconds to load. If one is slow, wait a moment or tap it.</p>
+    <p class="wel-ask">How do you want to play the clips?</p>
+    <button class="wel-opt rec" id="welSoundOn" type="button"><span class="wel-badge">Recommended</span><span class="wel-ico" aria-hidden="true">🔊</span><span class="wel-txt"><b>Sound on</b><small>Hear the clips; you can mute any time</small></span></button>
+    <button class="wel-opt" id="welSoundOff" type="button"><span class="wel-ico" aria-hidden="true">🔇</span><span class="wel-txt"><b>Sound off</b><small>Silent clips; tap the sound pill to unmute</small></span></button>
+    <a href="#" class="wel-skip" id="welSkip">Skip →</a>
+  </div>
+</div>
 <div class="overlay hidden" id="modal">
   <div class="modal-box">
     <button class="close" id="modalClose" aria-label="Close">✕</button>
@@ -187,12 +218,12 @@
 <div class="toast" id="toast"></div>
 <input type="file" id="fileInput" accept=".json,.csv,.xlsx,.xls" hidden>
 
-<script src="vendor/leaflet/leaflet.js?v=d8ddd76386"></script>
-<script src="vendor/maplibre/maplibre-gl.js?v=d8ddd76386"></script>
-<script src="vendor/maplibre/leaflet-maplibre-gl.js?v=d8ddd76386"></script>
-<script src="tiles.js?v=d8ddd76386"></script>
-<script src="vendor/xlsx.full.min.js?v=d8ddd76386"></script>
-<script src="puzzles-data.js?v=d8ddd76386"></script>
-<script src="app.js?v=d8ddd76386"></script>
+<script src="vendor/leaflet/leaflet.js?v=7632a6d25a"></script>
+<script src="vendor/maplibre/maplibre-gl.js?v=7632a6d25a"></script>
+<script src="vendor/maplibre/leaflet-maplibre-gl.js?v=7632a6d25a"></script>
+<script src="tiles.js?v=7632a6d25a"></script>
+<script src="vendor/xlsx.full.min.js?v=7632a6d25a"></script>
+<script src="puzzles-data.js?v=7632a6d25a"></script>
+<script src="app.js?v=7632a6d25a"></script>
 </body>
 </html>

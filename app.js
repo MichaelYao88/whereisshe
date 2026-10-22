@@ -15,7 +15,12 @@ const CONFIG = {
   rounds: 5,
   maxRoundScore: 5000,
   scoreScaleKm: 1492.7,              // decay beyond the radius: 5000 * e^(-(km - radius) / 1492.7)
-  fullScoreRadiusKm: 30,             // within this many km of the answer = full 5000 ("Perfect!")
+  fullScoreRadiusKm: 30,
+  // Future "try our other ranking game" card on a later visit. DISABLED: never shown to players while enabled is false.
+  // To launch: set enabled: true + url (+ title/blurb). Shows once, on visit >= minVisit, never in preview mode or on the first visit.
+  crossPromo: { enabled: false, url: "", title: "Rankd", blurb: "Our other game: rank things, see how your picks compare.", minVisit: 2 },
+  videoRetries: 2,                   // automatic reloads of a clip after an error or a stall
+  videoStallMs: 8000,                // no playback progress for this long while loading = stalled -> retry             // within this many km of the answer = full 5000 ("Perfect!")
   interstitialBeforeResults: true,   // ALWAYS show the ad after guess 5, before the results screen (daily too)
   interstitialSeconds: 5,            // skip countdown
   includePlaceholderDays: false,      // placeholder (non-featured) days are not in the daily rotation
@@ -27,9 +32,9 @@ const CONFIG = {
 };
 // v6: saved progress is namespaced by mode + day + puzzle id + a hash of the puzzle's content, under fresh v2 keys.
 // Anything from earlier versions (v1 keys, other daily numbering, other puzzle content) is discarded, never resumed.
-const LS = { results: "wis.results.v2", stats: "wis.stats.v2", settings: "wis.settings.v1", custom: "wis.custom.v1" };
+const LS = { results: "wis.results.v2", stats: "wis.stats.v2", settings: "wis.settings.v1", custom: "wis.custom.v1", welcome: "wis.welcome.v1", visits: "wis.visits.v1", promo: "wis.promo.v1" };
 const LEGACY_LS = ["wis.results.v1", "wis.stats.v1"];
-const BUILD = "d8ddd76386";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
+const BUILD = "7632a6d25a";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
 const BANDS = [[100, "🟩", "e-g"], [500, "🟨", "e-y"], [2000, "🟧", "e-o"], [Infinity, "🟥", "e-r"]];   // km thresholds
 
 // ================================================================
@@ -101,6 +106,8 @@ const PRONOUNS = { she: { subj: "she", obj: "her", noun: "woman" }, he: { subj: 
 const pronounOf = v => { v = str(v).toLowerCase(); return v === "he" || v === "him" ? "he" : v === "they" || v === "them" ? "they" : "she"; };
 const W = p => PRONOUNS[(p && p.featured && p.featured.pronoun) || "she"];
 const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
+// v10 heading: just the day code (+ daily No. on dated days). Never "Who is she?" (only the bottom reminder says that), never the handle.
+const dayTitle = p => state.mode === "practice" || !state.dateKey ? p.id : `${p.id} · No. ${pad3(dayNumber(state.dateKey) + 1)}`;
 const whereQ = p => { const w = W(p); return `Where ${w.subj === "they" ? "are" : "is"} ${w.subj}?`; };
 // focus: where to centre the starting (cropped) view, "x,y" or [x,y] or {x,y} in 0-1 of the media; null = centre
 const parseFocus = v => { if (v == null || v === "") return null; let a = Array.isArray(v) ? v : typeof v === "object" ? [v.x, v.y] : String(v).split(/[ ,;]+/);
@@ -287,7 +294,8 @@ function openPuzzle(p) {
 function showRound(i, revealed) {
   const p = state.puzzle, g = state.game, r = p.rounds[i]; g.cur = i; state.pin = null;
   $("#heroKind").textContent = `Round ${i + 1} / ${CONFIG.rounds}`;
-  $("#question").textContent = whereQ(p);   // name/handle only appears on the Meet her/him card after round 5
+  $("#question").textContent = dayTitle(p);   // v10: the day code ("she-001 · No. 001"); name/handle only on the Meet card
+  document.title = `${p.id} · ${CONFIG.brand}`;
   showMedia(r, i);
   $("#phTag") && $("#phTag").classList.toggle("hidden", !p.placeholder);
   if (p.featured) $("#credit").innerHTML = `<span class="who-hint">${esc(whoHint(p))}</span>`;
@@ -382,27 +390,83 @@ wideStage.addEventListener ? wideStage.addEventListener("change", fitMedia) : 0;
 let _rz = 0; window.addEventListener("resize", () => { clearTimeout(_rz); _rz = setTimeout(fitMedia, 120); });
 
 // ---- media: photo or looping muted video (autoplay needs muted + playsinline on iOS/Android)
+// v10 video loading: visible "Loading clip…" state, automatic retry on error/stall (cache-busted), a tap-to-play fallback
+// when the browser refuses autoplay (e.g. iOS Low Power Mode), and the next round's clip is preloaded in the background.
+const VS = { round: -1, url: "", tries: 0, state: "idle", timer: 0, lastT: -1, lastAt: 0, log: [] };
+function vidOverlay(kind, text) {
+  const o = $("#vidLoading"); if (!o) return;
+  VS.state = kind; o.dataset.state = kind; o.classList.toggle("hidden", kind === "playing" || kind === "idle");
+  o.querySelector(".vl-text").textContent = text || "";
+  o.querySelector(".vl-btn").classList.toggle("hidden", !(kind === "error" || kind === "tap" || kind === "slow"));
+  o.querySelector(".vl-btn").textContent = kind === "tap" ? "▶ Tap to play" : "↻ Retry";
+  o.querySelector(".vl-spin").classList.toggle("hidden", !(kind === "loading" || kind === "slow"));
+}
+function vidLoad(r, retry) {
+  const vid = $("#video"); clearInterval(VS.timer);
+  VS.url = retry ? `${r.video}${r.video.includes("?") ? "&" : "?"}retry=${VS.tries}-${Date.now() % 1e6}` : r.video;   // cache-busted retry
+  VS.log.push((retry ? "retry " : "load ") + VS.url);
+  vid.src = VS.url; vid.load(); vidOverlay("loading", "Loading clip…");
+  VS.lastT = -1; VS.lastAt = Date.now();
+  VS.timer = setInterval(() => {   // stall watchdog: no playback progress while the clip is still loading
+    if (vid.classList.contains("hidden")) return clearInterval(VS.timer);
+    if (!vid.paused && vid.currentTime !== VS.lastT) { VS.lastT = vid.currentTime; VS.lastAt = Date.now(); return; }
+    if (VS.state === "tap" || VS.state === "error") return;
+    const idle = Date.now() - VS.lastAt;
+    if (vid.readyState < 3 && idle > CONFIG.videoStallMs) vidFail("stall");
+    else if (vid.readyState < 3 && idle > 3500 && VS.state === "loading") vidOverlay("slow", "Still loading… clips can take a few seconds on slow connections");
+  }, 500);
+  vidPlay();
+}
+function vidFail(why) {
+  const r = state.puzzle && state.puzzle.rounds[VS.round]; if (!r || r.media !== "video") return;
+  VS.log.push("fail " + why);
+  if (VS.tries < CONFIG.videoRetries) {
+    VS.tries++; vidOverlay("loading", `Reconnecting… (try ${VS.tries + 1})`); clearInterval(VS.timer);
+    const at = VS.round; setTimeout(() => { if (VS.round === at && !$("#video").classList.contains("hidden")) vidLoad(r, true); }, 700 * VS.tries);
+  } else { clearInterval(VS.timer); vidOverlay("error", "This clip didn't load. Check your connection and tap Retry, or guess from the poster."); }
+}
+function vidPlay() {
+  const vid = $("#video"), pr = vid.play();
+  if (pr && pr.catch) pr.catch(err => {
+    if (err && err.name === "AbortError") return;                        // a newer load() replaced this one: not a failure
+    if (!vid.muted) { vid.muted = true; setMuteLabel(); pulseMute(); return vidPlay(); }   // sound refused without a gesture
+    if (err && err.name === "NotAllowedError") vidOverlay("tap", "Tap to play the clip");   // even muted autoplay refused
+  });
+}
+function preloadNext(i) {   // warm the next video round's clip (and the next posters/photos) while this round is played
+  const rs = state.puzzle.rounds, n = rs.slice(i + 1).find(x => x.media === "video");
+  rs.slice(i + 1, i + 3).forEach(x => { const im = new Image(); im.src = x.media === "video" ? x.poster : x.img; });
+  if (!n || (preloadNext.el && preloadNext.el.dataset.src === n.video)) return;
+  const v = preloadNext.el || (preloadNext.el = Object.assign(document.createElement("video"), { muted: true, preload: "auto", playsInline: true }));
+  v.dataset.src = n.video; v.src = n.video; v.load();
+}
 function showMedia(r, i) {
   const img = $("#photo"), vid = $("#video"), mute = $("#muteBtn"), isVid = r.media === "video";
   Zoom.reset(); Zoom.setRound(r); $("#media").classList.add("zoomable");
   img.classList.toggle("hidden", isVid); vid.classList.toggle("hidden", !isVid); mute.classList.toggle("hidden", !isVid); $("#zoomBtn").classList.toggle("hidden", isVid);
+  VS.round = i; VS.tries = 0;
   if (isVid) {
     img.removeAttribute("src");
-    // sound follows the player's last choice (settings.sound); autoplay always starts muted-capable for iOS/Android
+    // sound follows the player's choice (welcome card / sound pill = settings.sound); falls back to muted if refused
     vid.defaultMuted = true; vid.setAttribute("muted", ""); vid.muted = !settings.sound; vid.loop = true; vid.playsInline = true; vid.autoplay = true;
     if (r.poster) vid.poster = r.poster; else vid.removeAttribute("poster");
     vid.setAttribute("aria-label", `${whereQ(state.puzzle)} Round ${i + 1} video`);
     $("#media").style.setProperty("--media-bg", r.poster ? `url("${r.poster}")` : "none");
     vid.onloadedmetadata = fitMedia;
-    if (vid.getAttribute("src") !== r.video) { vid.src = r.video; vid.load(); } else fitMedia();
+    vid.onplaying = () => { VS.lastAt = Date.now(); vidOverlay("playing"); };
+    vid.onwaiting = () => { if (VS.state === "playing") vidOverlay("loading", "Loading clip…"); };
+    vid.onerror = () => vidFail("error " + (vid.error ? vid.error.code : "?"));
+    const same = vid.getAttribute("src") && vid.getAttribute("src").split("?")[0] === r.video && !vid.error;
+    if (!same) vidLoad(r, false); else { fitMedia(); if (vid.paused) vidPlay(); vidOverlay(vid.paused ? "loading" : "playing", "Loading clip…"); }
     setMuteLabel(); pulseMute();
-    // if the browser refuses autoplay with sound (no user gesture yet), fall back to muted autoplay; the choice is kept
-    const pr = vid.play(); if (pr && pr.catch) pr.catch(() => { if (!vid.muted) { vid.muted = true; setMuteLabel(); pulseMute(); vid.play().catch(() => {}); } });
   } else {
+    clearInterval(VS.timer); vidOverlay("idle");
+    vid.onerror = vid.onplaying = vid.onwaiting = null;
     if (!vid.paused) vid.pause(); vid.removeAttribute("src"); vid.removeAttribute("poster"); vid.load();
     img.classList.add("loading"); img.onload = () => { img.classList.remove("loading"); fitMedia(); }; img.src = r.img; img.alt = `${whereQ(state.puzzle)} Round ${i + 1} photo`;
     $("#media").style.setProperty("--media-bg", `url("${r.img}")`);   // blurred fill behind the contain-fit photo
   }
+  setTimeout(() => preloadNext(i), 1200);
 }
 function setMuteLabel() {
   const v = $("#video"), b = $("#muteBtn");
@@ -573,7 +637,7 @@ function goArchive() {
     const key = keyFromDay(n), p = puzzleForDate(key), mine = savedFor(keyFor("archive", key, p), p);
     const badge = mine && mine.done ? `<span class="ar done">${n0(mine.total ?? totalOf(mine))}</span>` : mine && mine.rounds?.length ? `<span class="ar">${mine.rounds.length}/5</span>` : `<span class="ar">Play →</span>`;
     rows.push(`<li><button class="arch ${n === last ? "today" : ""}" data-key="${key}" data-id="${esc(p.id)}"><span class="an">#${pad3(n + 1)}<small>${n === last ? "Today" : prettyDate(key).replace(/, \d{4}$/, "")}</small></span>
-      <span class="aq">📍 ${whereQ(p)}<small>${esc(dayLabel(p))}</small></span>${badge}</button></li>`);
+      <span class="aq">📍 ${esc(p.id)}<small>${esc(dayLabel(p))}</small></span>${badge}</button></li>`);
   }
   $("#archiveList").innerHTML = rows.join("");
   $$(".arch").forEach(b => b.onclick = () => goDate(b.dataset.key));
@@ -652,6 +716,42 @@ function menuModal() {
 }
 // "Clear my game data": confirm, then drop every WhereIsShe key from this browser (the marking tool's wis.mark.* is a
 // separate page and is kept), and reload from a clean URL so the app starts fresh on today's daily.
+// ---- v10 first-visit welcome card (sound default) + future cross-promo (disabled by CONFIG.crossPromo.enabled)
+function countVisit() {   // one per browser session (reloads in the same tab don't count)
+  try { if (sessionStorage.getItem("wis.visitCounted")) return load(LS.visits, 0); sessionStorage.setItem("wis.visitCounted", "1"); } catch {}
+  const n = (+load(LS.visits, 0) || 0) + 1; save(LS.visits, n); return n;
+}
+const welcomeDone = () => !!load(LS.welcome, null);
+function showWelcome() {
+  const p = state.puzzle || ALL[0], sj = W(p).subj;
+  $("#welSub").innerHTML = `Every day, 5 photos and clips of someone somewhere on Earth.<br>Look for clues and guess where ${esc(sj)} ${sj === "they" ? "are" : "is"}!`;
+  $("#welcome").classList.remove("hidden"); document.body.classList.add("welcome-open"); setTimeout(() => $("#welSoundOn").focus(), 50);
+}
+function chooseSound(choice) {   // a click = user gesture, so unmuted playback of the first clip is allowed right here
+  settings.sound = choice === "on"; saveSettings(); save(LS.welcome, { choice, at: Date.now() });
+  $("#welcome").classList.add("hidden"); document.body.classList.remove("welcome-open");
+  const v = $("#video");
+  if (!v.classList.contains("hidden")) { v.muted = !settings.sound; setMuteLabel(); pulseMute(); vidPlay(); }
+}
+const promoCfg = () => Object.assign({}, CONFIG.crossPromo, window.__WIS_PROMO_TEST__ || {});   // test override only
+function crossPromoCheck() {   // why the cross-promo would or wouldn't show (test hook)
+  const c = promoCfg();
+  if (!c.enabled) return "disabled";
+  if (!c.url) return "no url";
+  if (isPreview()) return "preview";
+  if (!welcomeDone()) return "first visit";
+  if (load(LS.promo, null)) return "already shown";
+  if ((+load(LS.visits, 0) || 0) < (c.minVisit || 2)) return "too early";
+  return "show";
+}
+function maybeCrossPromo() {
+  if (crossPromoCheck() !== "show") return;
+  const c = promoCfg(); save(LS.promo, { at: Date.now() });
+  openModal(`<div class="promo"><div class="promo-emoji">🏆</div><h2>Try ${esc(c.title)}</h2><p>${esc(c.blurb || "")}</p>
+    <a class="pill-btn primary" id="promoGo" href="${esc(c.url)}" target="_blank" rel="noopener">Play ${esc(c.title)} →</a>
+    <button class="link-btn" id="promoLater">Not now</button></div>`);
+  $("#promoLater").onclick = closeModal;
+}
 function wisKeys(store) { const out = []; try { for (let i = 0; i < store.length; i++) { const k = store.key(i); if (k && k.startsWith("wis.") && !k.startsWith("wis.mark.")) out.push(k); } } catch {} return out; }
 function clearGameData() {
   [localStorage, sessionStorage].forEach(st => { try { wisKeys(st).forEach(k => st.removeItem(k)); } catch {} });
@@ -713,7 +813,7 @@ async function handleFiles(files) {
   } catch (e) { console.error(e); toast("Couldn't read that file: " + e.message); }
 }
 window.WISLoadFiles = handleFiles;
-window.WIS = { Zoom, fitMedia, summaryMap: () => summaryMap, CONFIG, dailyPool, puzzleForDate, schedule: () => SCHED, mode: () => state.mode, dockMode, scoreFor, isPerfect, haversineKm, band, resultText, puzzles: () => ALL, map: () => map };   // test hooks
+window.WIS = { videoState: () => ({ state: VS.state, tries: VS.tries, round: VS.round, src: VS.url, log: VS.log.slice(), preload: preloadNext.el ? preloadNext.el.dataset.src : null }), crossPromoCheck, visits: () => load(LS.visits, 0), Zoom, fitMedia, summaryMap: () => summaryMap, CONFIG, dailyPool, puzzleForDate, schedule: () => SCHED, mode: () => state.mode, dockMode, scoreFor, isPerfect, haversineKm, band, resultText, puzzles: () => ALL, map: () => map };   // test hooks
 
 // ================================================================ wire up
 $("#guessBtn").onclick = submitGuess; $("#nextRoundBtn").onclick = nextRound; $("#nextBtn").onclick = next;
@@ -741,6 +841,7 @@ if (/[?&]cleared=/.test(location.search)) { try { history.replaceState(null, "",
 $("#fileInput").onchange = e => { const f = [...e.target.files]; if (f.length) handleFiles(f); e.target.value = ""; };
 $$(".tab").forEach(b => b.onclick = () => b.dataset.view === "today" ? goToday() : b.dataset.view === "archive" ? goArchive() : goPractice());
 document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !$("#welcome").classList.contains("hidden")) { chooseSound("skip"); return; }
   if (e.key === "Escape") { closeModal(); $("#lightbox").classList.add("hidden"); closeFullMap(); return; }
   if (e.key !== "Enter" || $("#playView").classList.contains("hidden") || !$("#modal").classList.contains("hidden") || /^(INPUT|TEXTAREA|BUTTON|A|SELECT)$/.test(document.activeElement?.tagName)) return;
   if (dockMode() !== "reveal" && !$("#guessBtn").disabled) submitGuess();
@@ -748,6 +849,12 @@ document.addEventListener("keydown", e => {
 });
 
 applyTheme();
+$("#welSoundOn").onclick = () => chooseSound("on"); $("#welSoundOff").onclick = () => chooseSound("off");
+$("#welSkip").onclick = e => { e.preventDefault(); chooseSound("skip"); };
+["pointerdown", "mousedown", "touchstart"].forEach(ev => $("#vidLoading .vl-btn").addEventListener(ev, e => e.stopPropagation(), { passive: true }));   // keep the media's drag/zoom from capturing the tap
+$("#vidLoading .vl-btn").onclick = e => { e.stopPropagation(); const r = state.puzzle.rounds[VS.round];
+  if (VS.state === "tap") { vidOverlay("loading", "Loading clip…"); vidPlay(); } else { VS.tries = 0; vidLoad(r, true); } };
+countVisit();
 if (!ALL.length) { $("#question").textContent = "No puzzles found. Run build.py or load a puzzle file."; return; }
 function route() {
   const h = location.hash, d = h.match(/(?:^#|&)d=(\d{4}-\d{2}-\d{2})/), p = h.match(/(?:^#|&)p=([^&]+)/);
@@ -761,4 +868,6 @@ function route() {
 }
 window.addEventListener("hashchange", () => { if (location.hash !== linkHash()) route(); });
 route();
+if (!welcomeDone() && !isPreview() && !location.hash.startsWith("#optin")) showWelcome();
+else setTimeout(maybeCrossPromo, 1500);
 })();

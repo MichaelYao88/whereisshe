@@ -397,3 +397,73 @@ html.map-open,html.map-open body{overflow:hidden}
 /* v9: preview mode banner (schedule.html "Play this day") */
 .preview-bar{margin:8px auto 0;max-width:1100px;padding:8px 14px;border-radius:12px;background:#fde68a;color:#422006;font-size:13px;font-weight:700;text-align:center}
 .preview-bar a{color:#422006;margin-left:10px;text-decoration:underline}
+
+/* v10: first-visit welcome card (WorldGuessr-style), over the blurred game */
+.welcome{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;
+  background:rgba(6,10,8,.38);-webkit-backdrop-filter:blur(14px) saturate(.9);backdrop-filter:blur(14px) saturate(.9)}
+.welcome.hidden{display:none}
+body.welcome-open{overflow:hidden}
+.wel-card{width:min(520px,100%);max-height:calc(100vh - 32px);overflow:auto;text-align:center;color:#e5e7eb;
+  background:linear-gradient(180deg,#0f2a1c 0%,#0b1712 55%,#0a0f0d 100%);border:1px solid rgba(74,222,128,.22);
+  border-radius:22px;padding:30px 30px 20px;box-shadow:0 24px 70px rgba(0,0,0,.55)}
+.wel-emoji{font-size:54px;line-height:1;margin-bottom:10px}
+.wel-title{margin:0 0 10px;color:#3fbf5a;font-size:clamp(25px,5.6vw,34px);font-weight:800;letter-spacing:-.02em;line-height:1.15}
+.wel-sub{margin:0 0 10px;font-size:16px;line-height:1.55;color:#d1d5db}
+.wel-note{margin:0 auto 14px;max-width:420px;font-size:13.5px;line-height:1.45;color:#a7b3ad;background:rgba(255,255,255,.05);border-radius:10px;padding:8px 10px}
+.wel-ask{margin:0 0 12px;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#86efac}
+.wel-opt{position:relative;display:flex;align-items:center;gap:16px;width:100%;min-height:72px;margin:0 0 12px;padding:14px 20px;text-align:left;
+  font:inherit;color:#fff;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:14px;transition:background .15s,border-color .15s,transform .1s}
+.wel-opt:hover,.wel-opt:focus-visible{background:rgba(63,191,90,.14);border-color:rgba(74,222,128,.55);outline:none}
+.wel-opt:active{transform:scale(.99)}
+.wel-opt.rec{background:rgba(63,191,90,.10);border-color:rgba(74,222,128,.35);margin-top:8px}
+.wel-ico{font-size:28px;width:36px;text-align:center;flex:none}
+.wel-txt b{display:block;font-size:18px;font-weight:800}
+.wel-txt small{display:block;font-size:14px;color:#9ca3af;margin-top:2px}
+.wel-badge{position:absolute;top:-10px;right:14px;background:#3fbf5a;color:#06210f;font-size:11px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:999px}
+.wel-skip{display:inline-block;margin-top:6px;padding:8px 12px;color:#7b8783;font-size:15px;text-decoration:none}
+.wel-skip:hover{color:#cbd5e1}
+@media (max-width:480px){.wel-card{padding:24px 18px 14px}.wel-emoji{font-size:46px}.wel-sub{font-size:15px}.wel-opt{min-height:66px;padding:12px 16px}}
+/* v10: video loading / retry / tap-to-play state */
+.vid-loading{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:10px;
+  max-width:min(320px,80%);padding:16px 20px;border-radius:16px;background:rgba(0,0,0,.62);color:#fff;text-align:center;font-size:14.5px;font-weight:700;pointer-events:none}
+.vid-loading.hidden{display:none}
+.vid-loading .vl-btn{pointer-events:auto;min-height:44px;padding:10px 18px;border:0;border-radius:999px;background:#fff;color:#111;font:inherit;font-weight:800;cursor:pointer}
+.vid-loading .vl-btn.hidden,.vid-loading .vl-spin.hidden{display:none}
+.vl-spin{width:34px;height:34px;border-radius:50%;border:4px solid rgba(255,255,255,.25);border-top-color:#fff;animation:vlspin .8s linear infinite}
+@keyframes vlspin{to{transform:rotate(360deg)}}
+.promo{text-align:center}.promo-emoji{font-size:46px}.promo .link-btn{display:block;margin:10px auto 0;background:none;border:0;color:var(--muted,#6b7280);cursor:pointer}
+
+/* v10: welcome-card explainer animation (inline SVG + CSS, ~3.6 s loop). The base styles ARE the final frame, so with
+   prefers-reduced-motion (animations off) it shows a static "pin + dashed line + +5,000" picture. Decorative only. */
+.wel-anim{margin:0 auto 12px;width:220px;pointer-events:none;user-select:none}
+.wel-anim svg{display:block;width:220px;height:112px;border-radius:14px;box-shadow:0 6px 22px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.08)}
+.wel-anim-cap{margin:7px 0 0;font-size:12.5px;color:#a7b3ad}
+.wel-anim .wa-pin,.wel-anim .wa-true,.wel-anim .wa-score,.wel-anim .wa-ripple{transform-box:fill-box;transform-origin:50% 100%}
+.wel-anim .wa-true,.wel-anim .wa-score,.wel-anim .wa-ripple{transform-origin:50% 50%}
+.wel-anim .wa-ripple{opacity:0}
+.wel-anim .wa-cursor{transform:translate(72px,62px)}
+.wel-anim .wa-finger{transform:translate(70px,60px);opacity:0}
+.wel-anim .wa-finger,.wel-anim .wa-cursor{display:none}
+@media (hover:hover) and (pointer:fine){.wel-anim .wa-cursor{display:inline}}
+@media not all and (hover:hover) and (pointer:fine){.wel-anim .wa-finger{display:inline}}
+@media (prefers-reduced-motion:no-preference){
+  .wel-anim .wa-cursor{animation:wa-cursor 3.6s ease-in-out infinite}
+  .wel-anim .wa-finger{animation:wa-finger 3.6s ease-in-out infinite}
+  .wel-anim .wa-ripple{animation:wa-ripple 3.6s ease-out infinite}
+  .wel-anim .wa-pin{animation:wa-pin 3.6s infinite}
+  .wel-anim .wa-line{animation:wa-line 3.6s linear infinite}
+  .wel-anim .wa-true{animation:wa-true 3.6s infinite}
+  .wel-anim .wa-score{animation:wa-score 3.6s infinite}
+}
+@keyframes wa-cursor{0%{transform:translate(22px,96px);opacity:0}6%{opacity:1}28%{transform:translate(72px,62px)}31%{transform:translate(72px,62px) scale(.82)}35%{transform:translate(72px,62px) scale(1)}
+  82%{transform:translate(72px,62px);opacity:1}92%,100%{transform:translate(90px,80px);opacity:0}}
+@keyframes wa-finger{0%{transform:translate(26px,96px) scale(1);opacity:0}8%{opacity:.95}28%{transform:translate(70px,60px) scale(1)}32%{transform:translate(70px,60px) scale(.75)}
+  38%{transform:translate(70px,60px) scale(1);opacity:.95}48%,100%{transform:translate(70px,60px);opacity:0}}
+@keyframes wa-ripple{0%,30%{opacity:0;transform:scale(.3)}32%{opacity:.95;transform:scale(.4)}48%{opacity:0;transform:scale(2.1)}100%{opacity:0}}
+@keyframes wa-pin{0%,31%{transform:translateY(-34px);opacity:0}33%{opacity:1}39%{transform:translateY(0)}43%{transform:translateY(-7px)}47%{transform:translateY(0)}
+  88%{transform:translateY(0);opacity:1}96%,100%{transform:translateY(0);opacity:0}}
+@keyframes wa-line{0%,48%{opacity:0;stroke-dashoffset:0}52%{opacity:1}88%{opacity:1;stroke-dashoffset:-36}96%,100%{opacity:0;stroke-dashoffset:-40}}
+@keyframes wa-true{0%,54%{transform:scale(0);opacity:0}60%{transform:scale(1.35);opacity:1}64%{transform:scale(1)}88%{transform:scale(1);opacity:1}96%,100%{transform:scale(1);opacity:0}}
+@keyframes wa-score{0%,62%{transform:translateY(8px) scale(.6);opacity:0}68%{transform:translateY(0) scale(1.12);opacity:1}72%{transform:scale(1)}88%{transform:scale(1);opacity:1}96%,100%{transform:translateY(-4px) scale(1);opacity:0}}
+@media (max-width:480px){.wel-anim{width:200px;margin-bottom:10px}.wel-anim svg{width:200px;height:102px}}
+@media (max-height:700px){.wel-anim{width:180px}.wel-anim svg{width:180px;height:92px}.wel-title{font-size:24px}}
