@@ -12,36 +12,53 @@
   nav{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;margin:0 0 16px} nav a{text-decoration:none;font-weight:700}
   .muted{color:var(--muted);font-size:14px}
 </style></head><body><main>
-<nav><a href="./">← Play WhereIsShe</a><a href="terms.html">Terms</a><a href="privacy.html">Privacy</a><a href="refund.html">Refunds</a></nav>
+<nav><a href="./">← Play WhereIsShe</a><a href="about.html">About</a><a href="how-to-play.html">How to play</a><a href="terms.html">Terms</a><a href="privacy.html">Privacy</a><a href="refund.html">Refunds</a></nav>
 <div class="card"><h1>Privacy policy</h1><p class="upd">Last updated Oct 23, 2026</p>
 
-<p>This page explains what data WhereIsShe uses, why, and what you can do about it. We don't sell your data.</p>
+<p>This page explains what data WhereIsShe (whereisshe.gg) uses, why, who else receives it, and what you can do about it. We don't sell your data. WhereIsShe is run by one independent developer, who is responsible for this data; you can reach us at the address at the bottom of this page.</p>
 <h2>If you just play (no account)</h2>
 <p>Your progress, scores, streak and settings (theme, sound) are stored <b>only in your browser</b> (localStorage). They aren't sent to us. “Clear my game data” in the menu deletes them.</p>
 <h2>If you sign in</h2>
 <ul><li><b>Email sign-in or Google sign-in.</b> We get your email address (and from Google, the basic profile Google shares with apps; we only use the email). It's used to sign you in, and to contact you about your submissions or Premium.</li>
 <li><b>Stats sync.</b> Your stats, saved results (your guesses and scores per puzzle) and settings are copied to your account so they're the same on every device. They're merged with the copy in your browser each time you sign in and after each game.</li>
-<li>Accounts and synced data are stored with <b>Supabase</b>, our database and login provider. Each player can only read their own data.</li></ul>
+<li>Accounts and synced data are stored with <b>Supabase</b>, our database and login provider. Each player can only read their own data.</li>
+<li><b>Login session.</b> When you sign in, Supabase's sign-in library keeps a session token in your browser's local storage so you stay signed in. Signing out removes it. Supabase also records basic sign-in logs (time, IP address, browser) for security.</li>
+<li>If you have Premium, your account also stores whether Premium is active, until when, and the Lemon Squeezy order/subscription and customer IDs.</li></ul>
 <h2>Feature me submissions</h2>
 <ul><li>We store what you send: your Instagram handle, your email, the links you paste, the photos and videos you upload, the location text you give for each, and your confirmations (that it's you, your consent, that you're 18+).</li>
 <li>Uploads are kept in <b>private storage</b> (Supabase Storage), visible only to us for review. Nothing is public unless we feature you, and you approve your day first.</li>
 <li>You need to be <b>signed in</b> (with a verified email) to submit. Each submission is linked to your account, so we can contact you and so that limits (one submission a day, a few waiting at a time) work. We don't store your IP address with submissions.</li></ul>
 <h2>Premium payments</h2>
 <p>Payments are handled by <b>Lemon Squeezy</b> (merchant of record). We never see or store your card details. Lemon Squeezy tells us that an order or subscription was paid, cancelled or refunded, with your account ID and email, so we can switch Premium on or off. See <a href="https://www.lemonsqueezy.com/privacy" rel="noopener">Lemon Squeezy's privacy policy</a>.</p>
-<h2>Ads and cookies</h2>
-<ul><li>Free players may see ads served by <b>Google AdSense</b>. Google and its partners may use cookies or similar technologies to show ads and measure them, including personalised ads based on your visits to this and other sites. You can manage this at <a href="https://adssettings.google.com" rel="noopener">Google Ad Settings</a>, and learn more in <a href="https://policies.google.com/technologies/ads" rel="noopener">how Google uses data from sites that use its services</a>.</li>
-<li>Where the law requires it (for example in the EEA, the UK and Switzerland), you'll be asked for consent before personalised ads or ad cookies are used.</li>
-<li>Premium players don't load the ad script at all.</li>
-<li>The game itself uses your browser's local storage (not tracking cookies) to save your progress and, if you sign in, your login session.</li></ul>
+<h2>Cookies and local storage</h2>
+<p>WhereIsShe itself doesn't set tracking cookies and doesn't use analytics. It uses your browser's <b>local storage</b> (and session storage for the current tab) for things the game needs to work:</p>
+<ul><li>your progress, results, stats and streak, and settings such as theme and sound (keys starting with <code>wis.</code>);</li>
+<li>if you sign in, your login session (a Supabase token);</li>
+<li>small flags such as whether you've seen the welcome card.</li></ul>
+<p>This data stays on your device unless you sign in (then your stats, results and settings are synced to your account). You can delete it at any time with “Clear my game data” in the menu, or by clearing your browser's site data for whereisshe.gg.</p>
+<h2>Google AdSense and third-party advertising cookies</h2>
+<ul><li>Free players may see ads served by <b>Google AdSense</b>. Third-party vendors, including Google, use cookies (and similar technologies such as local storage and device identifiers) to serve ads based on your previous visits to this website and other websites, and to measure how ads perform and prevent fraud.</li>
+<li>Google's use of advertising cookies enables it and its partners to serve ads to you based on your visits to this site and/or other sites on the Internet. Learn more in <a href="https://policies.google.com/technologies/ads" rel="noopener">how Google uses cookies in advertising</a> and <a href="https://policies.google.com/technologies/partner-sites" rel="noopener">how Google uses information from sites that use its services</a>.</li>
+<li>You can opt out of personalised advertising by Google at <a href="https://adssettings.google.com" rel="noopener">Google Ad Settings</a> (adssettings.google.com). You can opt out of some other vendors' use of cookies for personalised advertising at <a href="https://www.aboutads.info/choices/" rel="noopener">aboutads.info</a> or, in Europe, <a href="https://www.youronlinechoices.eu/" rel="noopener">youronlinechoices.eu</a>. If you opt out you'll still see ads, but they'll be less relevant.</li>
+<li>When ads are shown, Google receives your IP address, browser details and the page you're on. Its processing is described in the <a href="https://policies.google.com/privacy" rel="noopener">Google Privacy Policy</a>.</li>
+<li><b>Premium</b> players don't load the ad script at all, so no ad cookies are set for them by us.</li></ul>
+<h2>Consent in the EEA, the UK and Switzerland</h2>
+<ul><li>If you're in the European Economic Area, the United Kingdom or Switzerland, ads are only shown after a consent message from a <b>Google-certified consent management platform</b> (Google's own Privacy &amp; messaging tool). It asks whether you agree to cookies and personalised ads before any are used.</li>
+<li>If you don't consent, Google may show non-personalised or limited ads, which use cookies only for things like frequency capping, fraud prevention and aggregate measurement, where the law allows.</li>
+<li>You can change or withdraw your choice at any time from the privacy/cookie settings link shown with the consent message, or by clearing your browser's site data for whereisshe.gg (the message is then shown again).</li>
+<li>The legal bases we rely on are: performing our agreement with you (the game, your account, Premium), our legitimate interest in keeping the service secure and free of spam, and your consent for ad cookies and personalised ads.</li></ul>
 <h2>Other services the game loads</h2>
-<p>Map tiles come from OpenFreeMap (and Esri as a fallback), and the site is hosted on GitHub Pages. Like any website, these services receive your IP address and browser details when your browser loads files from them.</p>
+<p>Map tiles come from OpenFreeMap (and Esri as a fallback), and the site is hosted on GitHub Pages (GitHub, Inc.). Like any website, these services receive your IP address and browser details when your browser loads files from them.</p>
 <h2>Keeping and deleting data</h2>
-<ul><li>Synced stats stay until you ask us to delete your account. Submissions are kept while we review them and, if featured, for as long as you're in the game. Ask us and we'll remove them.</li>
-<li>To <b>delete your account and synced data</b>, or to <b>remove your photos and profile link</b>, email us from the address on your account (or with your Instagram handle). We'll confirm when it's done.</li>
-<li>You can also ask for a copy of your data or to correct it.</li></ul>
+<ul><li><b>Game data in your browser</b> stays until you clear it (“Clear my game data”, or your browser's site data).</li>
+<li><b>Your account and synced stats</b> stay until you ask us to delete your account. When you do, we delete your profile, synced stats and settings.</li>
+<li><b>Feature me submissions</b> (the form details and your uploaded photos and videos) are kept in private storage while we review them. If we decline a submission, or you withdraw it, we delete it and its files, normally within 30 days. If you're featured, we keep the photos used in your day for as long as you're in the game; ask us and we'll remove them and your profile link.</li>
+<li><b>Premium records</b> (order and subscription events) are kept as long as needed for accounting, refunds and disputes. Lemon Squeezy keeps its own payment records as merchant of record.</li>
+<li>To <b>delete your account and synced data</b>, to <b>withdraw a submission</b>, or to <b>remove your photos and profile link</b>, email us from the address on your account (or with your Instagram handle). We'll confirm when it's done.</li>
+<li>You can also ask for a copy of your data, to correct it, or to object to or restrict how we use it. If you're in the EEA or UK you can also complain to your local data protection authority.</li></ul>
 <h2>Children</h2>
 <p>Submissions are only for people 18 or older. The game isn't directed at children under 13, and we don't knowingly collect their data.</p>
 <h2>Changes</h2>
 <p>If this policy changes, we'll update the date at the top.</p>
-<h2>Contact</h2><p>Questions or requests: <a href="mailto:mikelyaps.bot@mail.grokbot.com">mikelyaps.bot@mail.grokbot.com</a></p>
+<h2>Contact</h2><p>Questions or requests: <a href="mailto:mikelyaps@gmail.com">mikelyaps@gmail.com</a></p>
 </div><p class="muted">WhereIsShe is a small independent game, at <a href="https://whereisshe.gg/">whereisshe.gg</a>.</p></main></body></html>

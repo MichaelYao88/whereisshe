@@ -9,7 +9,7 @@
 const CONFIG = {
   brand: "WhereIsShe",
   // Public URL used in share links. From file:// we can't share a local path, so a placeholder is used.
-  siteUrl: (location.protocol.startsWith("http") ? location.origin + location.pathname : "https://whereisshe.example/"),
+  siteUrl: (location.protocol.startsWith("http") ? location.origin + location.pathname : "https://whereisshe.gg/"),
   // Daily No. 1 date (launch day).
   dailyEpoch: "2026-10-21",          // Daily No. 001 = Oct 21 2026 = she-001; the 5 featured days then repeat in order
   rounds: 5,
@@ -25,9 +25,9 @@ const CONFIG = {
   interstitialSeconds: 5,            // skip countdown
   includePlaceholderDays: false,      // placeholder (non-featured) days are not in the daily rotation
   // Opt-in / removal. Leave the endpoints "" to fall back to a pre-filled email (mailto:).
-  optinEndpoint: "",                 // e.g. "https://api.whereisshe.example/optin"  (POST JSON)
-  removalEndpoint: "",               // e.g. "https://api.whereisshe.example/remove" (POST JSON)
-  contactEmail: "hello@whereisshe.example",   // PLACEHOLDER: set a real inbox before launch
+  optinEndpoint: "",                 // e.g. "https://api.whereisshe.gg/optin"  (POST JSON)
+  removalEndpoint: "",               // e.g. "https://api.whereisshe.gg/remove" (POST JSON)
+  contactEmail: "mikelyaps@gmail.com",   // THE contact address. To change it everywhere (app + legal/about pages): python3 tools/set_contact.py NEW@EMAIL
   // Map tiles: see tiles.js (OpenFreeMap vector basemap via MapLibre, Esri raster fallback; no API keys).
   // ---- v11 (see SETUP.md). All OFF on the live site until the Supabase migration is applied and RLS is verified.
   // backend: PUBLIC values only. anonKey = the publishable key (sb_publishable_…) or the legacy anon JWT. NEVER a sb_secret_ key.
@@ -48,7 +48,7 @@ const CONFIG = {
 const LS = { results: "wis.results.v2", stats: "wis.stats.v2", settings: "wis.settings.v1", custom: "wis.custom.v1", welcome: "wis.welcome.v1", visits: "wis.visits.v1", promo: "wis.promo.v1",
   auth: "wis.auth.v1", sync: "wis.sync.v1", premium: "wis.premium.v1" };   // v11: Supabase session (cleared by "Clear my game data" = signed out here), sync status, Premium cache
 const LEGACY_LS = ["wis.results.v1", "wis.stats.v1"];
-const BUILD = "d9f763ce24";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
+const BUILD = "aa5755ef09";   // stamped by tools/deploy.sh; must match window.WIS_BUILD in puzzles-data.js
 const BANDS = [[100, "🟩", "e-g"], [500, "🟨", "e-y"], [2000, "🟧", "e-o"], [Infinity, "🟥", "e-r"]];   // km thresholds
 
 // ================================================================
@@ -827,7 +827,7 @@ function howModal() {
 function aboutModal() {
   // no per-round credits here: they would spoil the answers and name the featured woman before round 5
   openModal(`<h2>About &amp; credits</h2><p style="color:var(--muted);font-size:14px">WhereIsShe is a prototype. Every day features someone who opted in; their photos are used with their permission, and they're credited (with a link to their Instagram) on the Meet card after round 5.</p>
-    <p style="font-size:13px"><a href="terms.html" target="_blank" rel="noopener">Terms</a> · <a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="refund.html" target="_blank" rel="noopener">Refunds</a></p>
+    <p style="font-size:13px"><a href="about.html" target="_blank" rel="noopener">About</a> · <a href="how-to-play.html" target="_blank" rel="noopener">How to play</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a> · <a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="refund.html" target="_blank" rel="noopener">Refunds</a></p>
     <p style="font-size:12px;color:var(--muted)">Map data © OpenStreetMap contributors · Basemap: OpenFreeMap / OpenMapTiles (fallback: Esri). Rendering: MapLibre GL JS (BSD-3-Clause). Map library: Leaflet (BSD-2-Clause).</p>`);
 }
 
