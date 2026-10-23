@@ -37,8 +37,8 @@ const CONFIG = {
   premium: { enabled: true, testMode: true, checkoutUrl: "https://mikelyaps.lemonsqueezy.com/checkout/buy/ca1efbfa-7ab8-4fe6-b96a-694c1f5691fa", price: "From $2.67/month · suggested $6.70", billing: "Monthly subscription · cancel anytime" },   // pay-what-you-want monthly (min $2.67, suggested $6.70)
   // "Feature me" v11 form (links and/or uploads). Login required; limits enforced by the submit_feature() SQL function.
   submissions: { enabled: true, maxFiles: 5, maxFileMB: 25, maxLinks: 10 },
-  // Google AdSense for the post-round-5 unit. Never loaded for Premium players. slot "" = keep the placeholder.
-  ads: { enabled: false, client: "ca-pub-5196178239625142", slot: "" },
+  // Google AdSense Display unit "whereisshe" for the post-round-5 placement. Never requested for Premium players.
+  ads: { enabled: true, client: "ca-pub-5196178239625142", slot: "7982022596" },
 };
 // Tests only (never on the live site): a localhost page may override CONFIG, e.g. to point at the mock backend.
 (function mergeTestConfig(dst, src) { if (!src || !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
@@ -280,7 +280,7 @@ function renderHero() {
   let bar = $("#previewBar");
   if (isPreview()) {
     if (!bar) { bar = document.createElement("div"); bar.id = "previewBar"; bar.className = "preview-bar"; $("#stage").before(bar); }
-    bar.innerHTML = `👀 Preview · No. ${pad3(n)} · ${esc(prettyDate(state.dateKey))} · progress isn't saved <a href="schedule.html">Schedule</a> <a href="#" id="previewExit">Exit</a>`;
+    bar.innerHTML = `👀 Preview · No. ${pad3(n)} · ${esc(prettyDate(state.dateKey))} · progress isn't saved <a href="loadingzone.html#preview">Loading zone</a> <a href="#" id="previewExit">Exit</a>`;
     $("#previewExit").onclick = e => { e.preventDefault(); goToday(); }; setTimeout(fitStage, 0);
   } else if (bar) bar.remove();
   const label = isToday() ? "Share today's puzzle" : "Share this puzzle";
@@ -588,7 +588,7 @@ function showResults(scroll) {
     return `<div class="rrow"><span class="re">${band(x.dist)[1]}</span><span class="rp">${i + 1}. ${esc(r.place)}<small>${esc(r.country)} · ${fmtKm(x.dist)} away</small></span>
       <span class="rs">${n0(x.pts)}<small>pts</small></span>${r.fact ? `<span class="rf">${esc(r.fact)}</span>` : ""}</div>`; }).join("");
   renderMeetHer(p);
-  $("#nextBtn").textContent = state.mode === "archive" ? "Back to archive →" : isPreview() ? "Back to schedule →" : "Play past days →";
+  $("#nextBtn").textContent = state.mode === "archive" ? "Back to archive →" : isPreview() ? "Back to loading zone →" : "Play past days →";
   renderCommunity(p, t);
   $("#result").classList.remove("hidden");
   drawSummary(p, g);
@@ -704,7 +704,7 @@ function goArchive() {
   $$(".arch").forEach(b => b.onclick = () => goDate(b.dataset.key));
   window.scrollTo({ top: 0 });
 }
-function next() { if (state.mode === "archive") goArchive(); else if (isPreview()) location.href = "schedule.html"; else goArchive(); }
+function next() { if (state.mode === "archive") goArchive(); else if (isPreview()) location.href = "loadingzone.html#preview"; else goArchive(); }
 
 // ================================================================ opt-in ("Feature me") + removal
 function goOptin() { showView("optin"); setHash("#optin"); setupFeatureForm(); window.scrollTo({ top: 0 }); }
@@ -1327,7 +1327,7 @@ countVisit();
 if (!ALL.length) { $("#question").textContent = "No puzzles found. Run build.py or load a puzzle file."; return; }
 function route() {
   const h = location.hash, d = h.match(/(?:^#|&)d=(\d{4}-\d{2}-\d{2})/), p = h.match(/(?:^#|&)p=([^&]+)/);
-  const pv = h.match(/preview=(\d{4}-\d{2}-\d{2})/) || (/[?&]preview=1/.test(location.search) && location.search.match(/[?&]date=(\d{4}-\d{2}-\d{2})/));
+  const pv = h.match(/preview=(\d{4}-\d{2}-\d{2})/) || location.search.match(/[?&]preview=(\d{4}-\d{2}-\d{2})/) || (/[?&]preview=1/.test(location.search) && location.search.match(/[?&]date=(\d{4}-\d{2}-\d{2})/));
   if (pv) return goPreview(pv[1]);
   if (h.startsWith("#archive")) return goArchive();
   if (h.startsWith("#optin")) return goOptin();
