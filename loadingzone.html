@@ -140,7 +140,11 @@ for (let t = utc(epoch); t <= utc(end); t += 864e5) {
   const [pid, how] = puzzleFor(key); if (!pid) continue;
   days.push({ key, no, pid, how, rs: by[pid] || [] });
 }
-$("#pvNote").textContent = `${days.length} scheduled days, ${fmtDate(days[0] ? days[0].key : epoch)} to ${fmtDate(days.length ? days[days.length - 1].key : end)}. The rotation keeps going after this window. Play does not touch stats or streaks. Old schedule.html links land here.`;
+const rotOn = (S.rotation || []).some(id => by[id]);
+const span = `${days.length} scheduled days, ${fmtDate(days[0] ? days[0].key : epoch)} to ${fmtDate(days.length ? days[days.length - 1].key : end)}`;
+$("#pvNote").textContent = rotOn
+  ? `${span}. The rotation keeps going after this window. Play does not touch stats or streaks. Old schedule.html links land here.`
+  : `${span}. Nothing is scheduled after the last pinned day. Play does not touch stats or streaks. Old schedule.html links land here.`;
 $("#days").innerHTML = days.map(({ key, no, pid, how, rs }) => {
   const f = featured(rs), videos = rs.filter(r => r.media_type === "video");
   const w = warnings(pid, rs), exc = (S.exceptions || {})[pid];
@@ -168,7 +172,9 @@ const vault = ids.map(pid => {
   const rs = by[pid];
   return { pid, rs, when: playOn(pid, today) || playOn(pid, epoch), used: used[pid] || 0 };
 });
-$("#dsNote").textContent = `${ids.length} puzzles in this build. Tap one for its rounds and places. “Used” counts this schedule window; a rotation puzzle keeps repeating after it. Nothing here is linked from the public game.`;
+$("#dsNote").textContent = rotOn
+  ? `${ids.length} puzzles in this build. Tap one for its rounds and places. “Used” counts this schedule window; a rotation puzzle keeps repeating after it. Nothing here is linked from the public game.`
+  : `${ids.length} puzzles in this build. Tap one for its rounds and places. “Used” counts pinned days in this window. Rotation is empty, so unpinned puzzles stay off the calendar. Nothing here is linked from the public game.`;
 $("#sets").innerHTML = vault.map((v, i) => {
   const f = featured(v.rs), videos = v.rs.filter(r => r.media_type === "video").length;
   const w = warnings(v.pid, v.rs), exc = (S.exceptions || {})[v.pid];
@@ -186,7 +192,7 @@ $("#sets").innerHTML = vault.map((v, i) => {
   </button></li>`;
 }).join("");
 const detail = v => {
-  const play = v.when ? `<p><a class="play" href="index.html?preview=${v.when}">Play · ${esc(fmtDate(v.when))}</a></p>` : `<p class="play disabled">No scheduled date to preview. Pin it or add it to the rotation.</p>`;
+  const play = v.when ? `<p><a class="play" href="index.html?preview=${v.when}">Play · ${esc(fmtDate(v.when))}</a></p>` : `<p class="play disabled">${rotOn ? "No scheduled date to preview. Pin it or add it to the rotation." : "No scheduled date to preview. Pin it to put it on a day."}</p>`;
   const lines = v.rs.map(r => `<li><b>Round ${esc(r.round)}</b> · ${r.media_type === "video" ? "video" : "photo"} · ${esc(r.place_name || "—")}${r.country ? ", " + esc(r.country) : ""}</li>`).join("");
   return `${play}<div class="thumbs">${thumbs(v.rs)}</div><ol class="rounds">${lines}</ol>`;
 };
