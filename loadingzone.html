@@ -26,7 +26,9 @@ main{max-width:920px;margin:0 auto;padding:10px 12px 40px}
 .hidden{display:none!important}
 .note{color:var(--muted);font-size:13px;margin:4px 2px 10px}
 .days,.sets{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
-.day{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 10px}
+.days{gap:12px}
+.day{display:flex;flex-direction:column;align-items:stretch;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.day-top{display:flex;align-items:center;gap:10px}
 .day.today{outline:2px solid var(--today)}
 .day.past{opacity:.8}
 .d-when{flex:none;width:92px;font-size:12px;color:var(--muted);line-height:1.25}
@@ -53,12 +55,12 @@ main{max-width:920px;margin:0 auto;padding:10px 12px 40px}
 .rounds li{padding:3px 0;border-bottom:1px solid var(--line);color:var(--muted)}
 .rounds b{color:var(--ink)}
 .thumbs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
-.th{position:relative;border-radius:8px;overflow:hidden;background:var(--thumb)}
-.th img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;background:var(--thumb)}
-.th .rn{position:absolute;left:4px;top:4px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;font-weight:800;padding:1px 5px;border-radius:999px}
-.th .vid{position:absolute;right:4px;top:4px;background:#fff;color:#111;font-size:10px;font-weight:800;padding:1px 5px;border-radius:999px}
-.th .pl{padding:4px 6px;font-size:10.5px;line-height:1.25;font-weight:700;color:#fff;background:#111}
-@media (max-width:560px){.d-when{width:72px}.play{padding:6px 10px}}
+.th{position:relative;display:flex;flex-direction:column;border-radius:9px;overflow:hidden;background:var(--thumb)}
+.th img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;background:var(--thumb);flex:none}
+.th .rn{position:absolute;left:5px;top:5px;background:rgba(0,0,0,.6);color:#fff;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:999px}
+.th .vid{position:absolute;right:5px;top:5px;background:#fff;color:#111;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:999px}
+.th .pl{padding:4px 6px 5px;font-size:10.5px;line-height:1.25;font-weight:700;color:#fff;background:#111;min-height:3.9em;flex:1}
+@media (max-width:560px){.d-when{width:72px}.play{padding:6px 10px}.thumbs{gap:4px}.th .pl{font-size:9.5px}}
 </style>
 </head>
 <body>
@@ -152,10 +154,13 @@ $("#days").innerHTML = days.map(({ key, no, pid, how, rs }) => {
     exc ? `<span class="tag" title="${esc(exc)}">1-video exception</span>` : "",
     w.map(x => `<span class="tag warn">${esc(x)}</span>`).join("")].join("");
   return `<li class="day ${when}" data-id="${esc(pid)}" data-key="${key}">
-    <div class="d-when"><b>#${pad3(no)}</b>${esc(fmtDate(key))}${key === today ? "<br><b>Today</b>" : ""}</div>
-    <div class="d-main"><h2>${esc(pid)}</h2><p>${whoLine(f)}</p>
-      <div class="tags">${tags}</div></div>
-    <a class="play" href="index.html?preview=${key}">Play</a></li>`;
+    <div class="day-top">
+      <div class="d-when"><b>#${pad3(no)}</b>${esc(fmtDate(key))}${key === today ? "<br><b>Today</b>" : ""}</div>
+      <div class="d-main"><h2>${esc(pid)}</h2><p>${whoLine(f)}</p>
+        <div class="tags">${tags}</div></div>
+      <a class="play" href="index.html?preview=${key}">Play</a>
+    </div>
+    <div class="thumbs">${thumbs(rs)}</div></li>`;
 }).join("");
 
 const ids = Object.keys(by).sort((a, b) => {
