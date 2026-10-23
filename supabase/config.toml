@@ -1,0 +1,5 @@
+project_id = "xhaduveumhtikwoekxdi"
+
+# The function checks the service-role bearer (or CRON_SECRET) itself.
+[functions.community-snapshot]
+verify_jwt = false
