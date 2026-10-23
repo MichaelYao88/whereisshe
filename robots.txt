@@ -3,5 +3,6 @@ Allow: /
 Disallow: /mark.html
 Disallow: /mark/
 Disallow: /schedule.html
+Disallow: /loadingzone.html
 
 Sitemap: https://whereisshe.gg/sitemap.xml

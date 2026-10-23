@@ -280,7 +280,7 @@ function renderHero() {
   let bar = $("#previewBar");
   if (isPreview()) {
     if (!bar) { bar = document.createElement("div"); bar.id = "previewBar"; bar.className = "preview-bar"; $("#stage").before(bar); }
-    bar.innerHTML = `👀 Preview · No. ${pad3(n)} · ${esc(prettyDate(state.dateKey))} · progress isn't saved <a href="schedule.html">Schedule</a> <a href="#" id="previewExit">Exit</a>`;
+    bar.innerHTML = `👀 Preview · No. ${pad3(n)} · ${esc(prettyDate(state.dateKey))} · progress isn't saved <a href="schedule.html">Loading zone</a> <a href="#" id="previewExit">Exit</a>`;
     $("#previewExit").onclick = e => { e.preventDefault(); goToday(); }; setTimeout(fitStage, 0);
   } else if (bar) bar.remove();
   const label = isToday() ? "Share today's puzzle" : "Share this puzzle";
@@ -574,7 +574,7 @@ function showResults(scroll) {
     return `<div class="rrow"><span class="re">${band(x.dist)[1]}</span><span class="rp">${i + 1}. ${esc(r.place)}<small>${esc(r.country)} · ${fmtKm(x.dist)} away</small></span>
       <span class="rs">${n0(x.pts)}<small>pts</small></span>${r.fact ? `<span class="rf">${esc(r.fact)}</span>` : ""}</div>`; }).join("");
   renderMeetHer(p);
-  $("#nextBtn").textContent = state.mode === "archive" ? "Back to archive →" : isPreview() ? "Back to schedule →" : "Play past days →";
+  $("#nextBtn").textContent = state.mode === "archive" ? "Back to archive →" : isPreview() ? "Back to loading zone →" : "Play past days →";
   renderCommunity(p, t);
   $("#result").classList.remove("hidden");
   drawSummary(p, g);

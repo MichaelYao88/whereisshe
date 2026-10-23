@@ -4,55 +4,89 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow, noarchive">
-<title>WhereIsShe · schedule (spoilers)</title>
+<title>WhereIsShe · Loading zone (spoilers)</title>
+<script>
+  // Same saved theme as the game. No saved choice defaults to dark.
+  (function(){try{var t=JSON.parse(localStorage.getItem("wis.settings.v1")||"{}").theme||"dark";
+  if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="dark";}})();
+</script>
 <style>
-:root{--bg:#f6f5f1;--card:#fff;--ink:#14161c;--muted:#6b7280;--brand:#4f46e5;--line:#e5e7eb}
-*{box-sizing:border-box}body{margin:0;font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+:root,[data-theme="dark"]{color-scheme:dark;--bg:#18181A;--card:#2B2B2E;--ink:#ECEAE4;--muted:#9C9A94;--brand:#3B5BFF;--line:rgba(236,234,228,.14);--tagbg:#2a3148;--tagink:#c5d0ff;--rotbg:#323238;--rotink:#bdbbc4;--warnbg:#3f2428;--warnink:#f3b4b6;--thumb:#141416;--place:#111114;--link:#8EA2FF}
+[data-theme="light"]{color-scheme:light;--bg:#f6f5f1;--card:#fff;--ink:#14161c;--muted:#6b7280;--brand:#4f46e5;--line:#e5e7eb;--tagbg:#eef2ff;--tagink:#3730a3;--rotbg:#f3f4f6;--rotink:#4b5563;--warnbg:#fee2e2;--warnink:#991b1b;--thumb:#e5e7eb;--place:#1f2937;--link:#2C47E0}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.45 Helvetica,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--ink)}
+a{color:var(--link)}
 header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:12px 16px}
-.wrap{max-width:1100px;margin:0 auto}
-h1{margin:0;font-size:20px;letter-spacing:-.02em}
+.wrap{max-width:1280px;margin:0 auto}
+h1{margin:0;font-size:22px;letter-spacing:-.03em}
+.sub{margin:2px 0 0;color:var(--muted);font-size:13px}
 .spoiler{display:inline-block;margin-left:8px;padding:2px 9px;border-radius:999px;background:#dc2626;color:#fff;font-size:11px;font-weight:800;letter-spacing:.06em;vertical-align:middle}
 .controls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-top:10px;font-size:13.5px}
-.controls input[type=date],.controls select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.controls input[type=date],.controls select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
 .controls label{display:inline-flex;gap:6px;align-items:center}
+.jumps{font-size:13px;font-weight:700}
 .note{color:var(--muted);font-size:12.5px;margin:6px 0 0}
-main{padding:14px 16px 40px}
-.day{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:0 0 12px;display:grid;grid-template-columns:150px 1fr auto;gap:12px;align-items:center}
+main{padding:14px 16px 28px}
+.panels{display:grid;gap:18px}
+h2{margin:0 0 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.day,.pz{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:0 0 12px}
 .day.today{border:2px solid var(--brand)}
 .day.past{opacity:.72}
-.dno{font-weight:800;font-size:18px}.dno small{display:block;font-weight:600;font-size:12.5px;color:var(--muted)}
-.tag{display:inline-block;margin-top:4px;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;background:#eef2ff;color:#3730a3}
-.tag.rot{background:#f3f4f6;color:#4b5563}.tag.now{background:var(--brand);color:#fff}
-.tag.warn{background:#fee2e2;color:#991b1b}
-.meta{font-size:13px;color:var(--muted);margin-bottom:6px}.meta b{color:var(--ink)}
+.top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.dno{font-weight:800;font-size:16px}.dno small{display:block;font-weight:600;font-size:12.5px;color:var(--muted);margin-top:2px}
+.tag{display:inline-block;margin:4px 4px 0 0;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;background:var(--tagbg);color:var(--tagink)}
+.tag.rot{background:var(--rotbg);color:var(--rotink)}
+.tag.now{background:var(--brand);color:#fff}
+.tag.warn{background:var(--warnbg);color:var(--warnink)}
+.tag.unused{background:var(--warnbg);color:var(--warnink)}
+.meta{font-size:13px;color:var(--muted);margin:8px 0 6px}.meta b{color:var(--ink)}
 .thumbs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
-.th{position:relative;border-radius:9px;overflow:hidden;background:#ddd}
-.th img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block}
+.th{position:relative;border-radius:9px;overflow:hidden;background:var(--thumb)}
+.th img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;background:var(--thumb)}
 .th .rn{position:absolute;left:5px;top:5px;background:rgba(0,0,0,.6);color:#fff;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:999px}
 .th .vid{position:absolute;right:5px;top:5px;background:#fff;color:#111;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:999px}
-.th .pl{padding:4px 6px 5px;font-size:10.5px;line-height:1.25;font-weight:700;color:#fff;background:#1f2937;display:none;min-height:3.9em}
+.th .pl{padding:4px 6px 5px;font-size:10.5px;line-height:1.25;font-weight:700;color:#fff;background:var(--place);display:none;min-height:3.9em}
 body.answers .th .pl{display:block}
 .who{display:none}body.answers .who{display:inline}
-.play{display:inline-block;padding:10px 16px;border-radius:999px;background:var(--brand);color:#fff;font-weight:800;text-decoration:none;white-space:nowrap}
+.play{display:inline-block;padding:8px 14px;border-radius:999px;background:var(--brand);color:#fff;font-weight:800;text-decoration:none;white-space:nowrap;font-size:13px}
+.play.disabled{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:600;white-space:normal;max-width:220px;cursor:default}
+.limit{color:var(--muted);font-size:12px;margin:6px 0 0}
+@media (min-width:1080px){
+  .panels{grid-template-columns:1fr 1fr;align-items:start}
+  .panel{max-height:calc(100vh - 168px);overflow:auto;padding-right:4px}
+}
 @media (max-width:760px){
-  .day{grid-template-columns:1fr auto;grid-template-areas:"no play" "body body"}
-  .day .dno{grid-area:no}.day .body{grid-area:body}.day .act{grid-area:play}
+  .top{flex-direction:column}
   .thumbs{gap:4px}.th .pl{font-size:9.5px}
+  .play.disabled{max-width:none}
 }
 </style>
 </head>
 <body>
 <header><div class="wrap">
-  <h1>WhereIsShe schedule <span class="spoiler">SPOILERS</span></h1>
+  <h1>Loading zone <span class="spoiler">SPOILERS</span></h1>
+  <p class="sub">Upcoming days and every puzzle in the vault.</p>
   <div class="controls">
     <label>From <input type="date" id="from"></label>
     <label>Days <select id="days"><option>7</option><option selected>14</option><option>28</option><option>60</option></select></label>
     <label><input type="checkbox" id="answers"> Show places &amp; who's featured</label>
+    <span class="jumps"><a href="#upcoming">Upcoming</a> · <a href="#vault">All puzzles</a></span>
     <a href="index.html">Back to the game</a>
   </div>
-  <p class="note">Unlisted page for planning. "Play this day" opens the game in preview mode: nothing is saved, and your real daily progress, streak and stats stay untouched. Edit the schedule with <code>tools/schedule.py</code>.</p>
+  <p class="note">Unlisted planning page. Preview opens the game without saving, so the live daily, streak and stats stay untouched. A puzzle that is not pinned and not in the rotation has no date to preview. Same page as <code>loadingzone.html</code>. Edit dates with <code>tools/schedule.py</code>.</p>
 </div></header>
-<main class="wrap" id="list"></main>
+<main class="wrap">
+  <div class="panels">
+    <section class="panel" id="upcoming">
+      <h2>Upcoming</h2>
+      <div id="list"></div>
+    </section>
+    <section class="panel" id="vault">
+      <h2 id="vaultTitle">All puzzles</h2>
+      <div id="inventory"></div>
+    </section>
+  </div>
+</main>
 <script src="puzzles-data.js?v=3148c28028"></script>
 <script>
 (() => {
@@ -65,6 +99,8 @@ const utc = k => { const [y, m, d] = k.split("-").map(Number); return Date.UTC(y
 const keyOf = t => { const d = new Date(t); return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`; };
 const now = new Date(), today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 const pinnedKeys = Object.keys(S.dates || {}).sort(), lastPinned = pinnedKeys[pinnedKeys.length - 1];
+const pretty = key => new Date(utc(key)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+const dayNo = key => Math.round((utc(key) - utc(S.epoch)) / 864e5) + 1;
 // same rule as app.js puzzleForDate() and tools/schedule.py puzzle_for()
 function puzzleFor(key) {
   const pid = (S.dates || {})[key]; if (pid && by[pid]) return [pid, "pinned"];
@@ -78,32 +114,71 @@ function warnings(pid, rs) {   // same day rules as tools/schedule.py validate
   if (vp[0] !== 1) w.push("round 1 isn't a video");
   if (exc) { if (vp.join() !== "1") w.push(`videos in rounds ${vp}`); }
   else if (vp.length >= 3 ? !(vp[0] === 1 && vp[1] === 2 && vp[vp.length - 1] === 5 && vp.length === 3) : vp.join() !== "1,5") w.push(`videos in rounds ${vp}`);
+  rs.forEach((r, i) => { if (!(r.media_type === "video" ? r.poster_url : r.image_url)) w.push(`round ${i + 1} has no picture`); });
   return w;
 }
+function thumbs(rs) {
+  return rs.map((r, i) => `<div class="th"><img loading="lazy" alt="Round ${i + 1}" src="${esc(r.media_type === "video" ? r.poster_url : r.image_url)}">
+    <span class="rn">${i + 1}</span>${r.media_type === "video" ? '<span class="vid">▶ video</span>' : ""}<span class="pl">${esc(r.place_name)}</span></div>`).join("");
+}
+function playOn(pid, start) {
+  if (!pid || !S.epoch) return null;
+  for (let k = 0; k < 400; k++) {
+    const key = keyOf(utc(start) + k * 864e5);
+    if (dayNo(key) < 1) continue;
+    if (puzzleFor(key)[0] === pid) return key;
+  }
+  return null;
+}
+const isPinned = pid => Object.values(S.dates || {}).includes(pid);
+const inRotation = pid => (S.rotation || []).includes(pid);
 function render() {
   const from = $("#from").value || today, days = +$("#days").value, out = [];
   for (let k = 0; k < days; k++) {
-    const key = keyOf(utc(from) + k * 864e5), no = Math.round((utc(key) - utc(S.epoch)) / 864e5) + 1;
+    const key = keyOf(utc(from) + k * 864e5), no = dayNo(key);
     if (no < 1) continue;
     const [pid, how] = puzzleFor(key), rs = by[pid] || [], f = rs.find(r => r.featured_handle) || {};
-    const pretty = new Date(utc(key)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
-    const thumbs = rs.map((r, i) => `<div class="th"><img loading="lazy" alt="Round ${i + 1}" src="${esc(r.media_type === "video" ? r.poster_url : r.image_url)}">
-        <span class="rn">${i + 1}</span>${r.media_type === "video" ? '<span class="vid">▶ video</span>' : ""}<span class="pl">${esc(r.place_name)}</span></div>`).join("");
-    const w = warnings(pid, rs), exc = (S.exceptions || {})[pid];
+    const w = warnings(pid, rs), exc = (S.exceptions || {})[pid], videos = rs.filter(r => r.media_type === "video").length;
     out.push(`<section class="day ${key === today ? "today" : utc(key) < utc(today) ? "past" : ""}" data-date="${key}" data-id="${esc(pid)}">
-      <div class="dno">No. ${String(no).padStart(3, "0")}<small>${esc(pretty)}</small>
-        ${key === today ? '<span class="tag now">Today</span> ' : ""}<span class="tag ${how === "rotation" ? "rot" : ""}">${how}</span>${w.map(x => ` <span class="tag warn">${esc(x)}</span>`).join("")}${exc ? ` <span class="tag rot" title="${esc(exc)}">1 video (exception)</span>` : ""}</div>
-      <div class="body"><div class="meta"><b>${esc(pid || "nothing scheduled")}</b><span class="who"> · @${esc(f.featured_handle || "")}${f.featured_name ? " (" + esc(f.featured_name) + ")" : ""}</span> · ${rs.filter(r => r.media_type === "video").length} video(s)</div>
-        <div class="thumbs">${thumbs}</div></div>
-      <div class="act"><a class="play" href="index.html#preview=${key}">Play this day</a></div></section>`);
+      <div class="top"><div class="dno">No. ${String(no).padStart(3, "0")}<small>${esc(pretty(key))}</small></div>
+        <a class="play" href="index.html#preview=${key}">Play this day</a></div>
+      <div>${key === today ? '<span class="tag now">Today</span>' : ""}<span class="tag ${how === "rotation" ? "rot" : ""}">${how}</span>${w.map(x => `<span class="tag warn">${esc(x)}</span>`).join("")}${exc ? `<span class="tag rot" title="${esc(exc)}">1 video (exception)</span>` : ""}</div>
+      <div class="meta"><b>${esc(pid || "nothing scheduled")}</b><span class="who"> · @${esc(f.featured_handle || "")}${f.featured_name ? " (" + esc(f.featured_name) + ")" : ""}</span> · ${videos} video${videos === 1 ? "" : "s"}</div>
+      <div class="thumbs">${thumbs(rs)}</div></section>`);
   }
   $("#list").innerHTML = out.join("") || "<p>No days in this range.</p>";
+}
+function renderVault() {
+  const ids = Object.keys(by).sort((a, b) => {
+    const ord = rs => { const ns = by[rs].map(r => +r.daily_order).filter(n => n > 0); return ns.length ? Math.min(...ns) : 1e9; };
+    return ord(a) - ord(b) || a.localeCompare(b);
+  });
+  $("#vaultTitle").textContent = `All puzzles · ${ids.length} in this build`;
+  $("#inventory").innerHTML = ids.map(pid => {
+    const rs = by[pid], f = rs.find(r => r.featured_handle) || {}, videos = rs.filter(r => r.media_type === "video").length;
+    const pinned = isPinned(pid), rot = inRotation(pid), w = warnings(pid, rs), exc = (S.exceptions || {})[pid];
+    const when = playOn(pid, today) || playOn(pid, S.epoch);
+    const status = [
+      pinned ? `<span class="tag">pinned</span>` : "",
+      rot ? `<span class="tag rot">in rotation</span>` : "",
+      !pinned && !rot ? `<span class="tag unused">unused</span>` : ""
+    ].join("");
+    const who = f.featured_handle ? `@${esc(f.featured_handle)}${f.featured_name ? " (" + esc(f.featured_name) + ")" : ""}` : "no featured person";
+    const play = when
+      ? `<a class="play" href="index.html#preview=${when}">Preview · ${esc(pretty(when))}</a>`
+      : `<div><span class="play disabled">No preview date</span><p class="limit">The game only previews a scheduled date. Pin this puzzle or add it to the rotation.</p></div>`;
+    return `<article class="pz" data-id="${esc(pid)}">
+      <div class="top"><div class="dno">${esc(pid)}<small>${esc(who)} · ${videos} video${videos === 1 ? "" : "s"}</small></div>${play}</div>
+      <div>${status}${w.map(x => `<span class="tag warn">${esc(x)}</span>`).join("")}${exc ? `<span class="tag rot" title="${esc(exc)}">1 video (exception)</span>` : ""}</div>
+      <div class="thumbs">${thumbs(rs)}</div></article>`;
+  }).join("") || "<p>No puzzles in the build.</p>";
 }
 $("#from").value = today; $("#from").min = S.epoch || "";
 $("#from").onchange = $("#days").onchange = render;
 $("#answers").onchange = e => document.body.classList.toggle("answers", e.target.checked);
-render();
-window.WISSCHED = { puzzleFor, render };
+render(); renderVault();
+if (location.hash) { const el = document.querySelector(location.hash); if (el) el.scrollIntoView(); }
+window.WISSCHED = { puzzleFor, warnings, render, renderVault, puzzles: () => Object.keys(by) };
 })();
 </script>
 </body>
