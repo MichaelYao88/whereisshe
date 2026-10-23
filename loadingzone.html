@@ -3,12 +3,185 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow, noarchive">
-<title>WhereIsShe · Loading zone</title>
-<script>location.replace("schedule.html" + location.search + location.hash);</script>
-<meta http-equiv="refresh" content="0; url=schedule.html">
+<meta name="robots" content="noindex, nofollow">
+<title>Loading Zone · WhereIsShe</title>
+<script>
+  (function(){try{var t=JSON.parse(localStorage.getItem("wis.settings.v1")||"{}").theme||"dark";
+  if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="dark";}})();
+</script>
+<style>
+:root,[data-theme="dark"]{color-scheme:dark;--bg:#18181A;--card:#2B2B2E;--ink:#ECEAE4;--muted:#9C9A94;--line:rgba(236,234,228,.14);--brand:#3B5BFF;--today:#ffe58a;--ok:#8ddeaf;--warn:#f3b4b6;--thumb:#141416}
+[data-theme="light"]{color-scheme:light;--bg:#f6f5f1;--card:#fff;--ink:#14161c;--muted:#6b7280;--line:#e5e7eb;--brand:#4f46e5;--today:#f5c542;--ok:#166534;--warn:#991b1b;--thumb:#e5e7eb}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 Helvetica,"Helvetica Neue",Arial,sans-serif}
+.lz-banner{margin:0;padding:10px 16px;background:rgba(59,91,255,.12);font:600 13px/1.4 Helvetica,Arial,sans-serif}
+.lz-banner a{margin-left:.5rem;color:var(--ink)}
+.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 14px 8px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.top h1{font-size:19px;margin:0;flex:1;letter-spacing:-.02em}
+.tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px}
+.tabs button{border:0;background:none;color:var(--ink);font:inherit;font-weight:700;font-size:14px;padding:6px 14px;border-radius:999px;cursor:pointer}
+.tabs button[aria-selected=true]{background:var(--brand);color:#fff}
+main{max-width:920px;margin:0 auto;padding:10px 12px 40px}
+.hidden{display:none!important}
+.note{color:var(--muted);font-size:13px;margin:4px 2px 10px}
+.tools{display:flex;gap:12px;align-items:center;margin:0 2px 10px;font-size:13px;color:var(--muted)}
+.tools input{accent-color:var(--brand)}
+.days,.sets{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.day{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 10px}
+.day.today{outline:2px solid var(--today)}
+.day.past{opacity:.8}
+.d-when{flex:none;width:92px;font-size:12px;color:var(--muted);line-height:1.25}
+.d-when b{display:block;color:var(--ink);font-size:13px}
+.d-main{flex:1;min-width:0}
+.d-main h2{margin:0;font-size:15px;line-height:1.25}
+.d-main p{margin:1px 0 0;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
+.tag{font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+.tag.ok{color:var(--ok);border-color:currentColor}
+.tag.warn{color:var(--warn);border-color:currentColor}
+.play{flex:none;text-decoration:none;font-weight:800;font-size:13.5px;color:#fff;background:var(--brand);border-radius:999px;padding:7px 13px}
+.play.disabled{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:600;white-space:normal;max-width:200px;text-align:right}
+.set{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.set-top{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.set-top b{font-size:15px}
+.set-top small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.thumbs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:8px}
+.th{position:relative;border-radius:8px;overflow:hidden;background:var(--thumb)}
+.th img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;background:var(--thumb)}
+.th .rn{position:absolute;left:4px;top:4px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;font-weight:800;padding:1px 5px;border-radius:999px}
+.th .vid{position:absolute;right:4px;top:4px;background:#fff;color:#111;font-size:10px;font-weight:800;padding:1px 5px;border-radius:999px}
+.th .pl{display:none;padding:4px 6px;font-size:10.5px;line-height:1.25;font-weight:700;color:#fff;background:#111}
+body.answers .th .pl{display:block}
+@media (max-width:560px){.d-when{width:72px}.play{padding:6px 10px}}
+</style>
 </head>
 <body>
-<p><a href="schedule.html">Loading zone</a></p>
+<p class="lz-banner">Owner preview for WhereIsShe. Play opens a sandboxed preview that <b>doesn’t count</b> toward stats or streaks. Not linked from the game.
+  <a href="index.html">← Back to the game</a></p>
+<header class="top">
+  <h1>Loading Zone</h1>
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tabPreview" aria-selected="true">Preview</button>
+    <button role="tab" id="tabData" aria-selected="false">Datasets</button>
+  </nav>
+</header>
+<main>
+  <section id="previewView">
+    <p class="note" id="pvNote"></p>
+    <ol class="days" id="days"></ol>
+  </section>
+  <section id="dataView" class="hidden">
+    <p class="note" id="dsNote"></p>
+    <label class="tools"><input type="checkbox" id="answers"> Show places on the thumbs</label>
+    <ul class="sets" id="sets"></ul>
+  </section>
+</main>
+<script src="puzzles-data.js?v=3148c28028"></script>
+<script>
+(() => {
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad3 = n => String(n).padStart(3, "0");
+const S = window.WIS_SCHEDULE || {}, ROWS = window.WIS_PUZZLE_ROWS || [];
+const by = {}; ROWS.forEach(r => { if (!r.puzzle_id) return; (by[r.puzzle_id] = by[r.puzzle_id] || []).push(r); });
+Object.values(by).forEach(rs => rs.sort((a, b) => a.round - b.round));
+const utc = k => { const [y, m, d] = String(k).split("-").map(Number); return Date.UTC(y, m - 1, d); };
+const keyOf = t => { const d = new Date(t); return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`; };
+const now = new Date(), today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+const fmtDate = k => new Date(utc(k)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+const pinnedKeys = Object.keys(S.dates || {}).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
+const lastPinned = pinnedKeys[pinnedKeys.length - 1];
+const epoch = S.epoch && /^\d{4}-\d{2}-\d{2}$/.test(S.epoch) ? S.epoch : (pinnedKeys[0] || today);
+function puzzleFor(key) {
+  const pid = (S.dates || {})[key]; if (pid && by[pid]) return [pid, "pinned"];
+  const rot = (S.rotation || []).filter(id => by[id]); if (!rot.length) return [null, "none"];
+  const n = lastPinned && utc(key) > utc(lastPinned) ? Math.round((utc(key) - utc(lastPinned)) / 864e5) - 1 : Math.round((utc(key) - utc(epoch)) / 864e5);
+  return [rot[((n % rot.length) + rot.length) % rot.length], "rotation"];
+}
+function warnings(pid, rs) {
+  const w = [], vp = rs.map((r, i) => r.media_type === "video" ? i + 1 : 0).filter(Boolean), exc = (S.exceptions || {})[pid];
+  if (rs.length !== 5) w.push(`${rs.length} rounds`);
+  if (vp[0] !== 1) w.push("round 1 isn't a video");
+  if (exc) { if (vp.join() !== "1") w.push(`videos in rounds ${vp.join(", ") || "none"}`); }
+  else if (vp.length >= 3 ? !(vp[0] === 1 && vp[1] === 2 && vp[vp.length - 1] === 5 && vp.length === 3) : vp.join() !== "1,5") w.push(`videos in rounds ${vp.join(", ") || "none"}`);
+  rs.forEach((r, i) => { if (!(r.media_type === "video" ? r.poster_url : r.image_url)) w.push(`round ${i + 1} has no picture`); });
+  return w;
+}
+const dayNo = key => Math.round((utc(key) - utc(epoch)) / 864e5) + 1;
+const isPinned = pid => Object.values(S.dates || {}).includes(pid);
+const inRotation = pid => (S.rotation || []).includes(pid);
+function playOn(pid, start) {
+  if (!pid) return null;
+  for (let k = 0; k < 400; k++) {
+    const key = keyOf(utc(start) + k * 864e5);
+    if (dayNo(key) < 1) continue;
+    if (puzzleFor(key)[0] === pid) return key;
+  }
+  return null;
+}
+function thumbs(rs) {
+  return rs.map((r, i) => `<div class="th"><img loading="lazy" alt="" src="${esc(r.media_type === "video" ? r.poster_url : r.image_url)}"><span class="rn">${i + 1}</span>${r.media_type === "video" ? '<span class="vid">▶</span>' : ""}<span class="pl">${esc(r.place_name)}</span></div>`).join("");
+}
+const featured = rs => rs.find(r => r.featured_handle) || {};
+const whoLine = f => f.featured_handle ? `@${esc(f.featured_handle)}${f.featured_name ? " · " + esc(f.featured_name) : ""}` : "no featured person";
+
+const end = keyOf(Math.max(utc(today), utc(lastPinned || today)) + 60 * 864e5);
+const days = [];
+for (let t = utc(epoch); t <= utc(end); t += 864e5) {
+  const key = keyOf(t), no = dayNo(key); if (no < 1) continue;
+  const [pid, how] = puzzleFor(key); if (!pid) continue;
+  days.push({ key, no, pid, how, rs: by[pid] || [] });
+}
+$("#pvNote").textContent = `${days.length} scheduled days, ${fmtDate(days[0] ? days[0].key : epoch)} to ${fmtDate(days.length ? days[days.length - 1].key : end)}. The rotation keeps going after this window. Play does not touch stats or streaks. Old schedule.html links land here.`;
+$("#days").innerHTML = days.map(({ key, no, pid, how, rs }) => {
+  const f = featured(rs), videos = rs.filter(r => r.media_type === "video").length;
+  const when = key < today ? "past" : key === today ? "today" : "future";
+  return `<li class="day ${when}" data-id="${esc(pid)}" data-key="${key}">
+    <div class="d-when"><b>#${pad3(no)}</b>${esc(fmtDate(key))}${key === today ? "<br><b>Today</b>" : ""}</div>
+    <div class="d-main"><h2>${esc(pid)}</h2><p>${whoLine(f)} · ${videos} video${videos === 1 ? "" : "s"}</p>
+      <div class="tags"><span class="tag">${how}</span></div></div>
+    <a class="play" href="index.html?preview=${key}">Play</a></li>`;
+}).join("");
+
+const ids = Object.keys(by).sort((a, b) => {
+  const ord = id => { const ns = by[id].map(r => +r.daily_order).filter(n => n > 0); return ns.length ? Math.min(...ns) : 1e9; };
+  return ord(a) - ord(b) || a.localeCompare(b);
+});
+$("#dsNote").textContent = `${ids.length} puzzles in this build. Thumbs, who is featured, validation, and whether each one is pinned, in the rotation, or unused. A puzzle with no scheduled date cannot be previewed.`;
+$("#sets").innerHTML = ids.map(pid => {
+  const rs = by[pid], f = featured(rs), videos = rs.filter(r => r.media_type === "video").length;
+  const w = warnings(pid, rs), exc = (S.exceptions || {})[pid];
+  const pinned = isPinned(pid), rot = inRotation(pid);
+  const when = playOn(pid, today) || playOn(pid, epoch);
+  const tags = [
+    pinned ? `<span class="tag">pinned</span>` : "",
+    rot ? `<span class="tag">in rotation</span>` : "",
+    !pinned && !rot ? `<span class="tag warn">unused</span>` : "",
+    w.length ? w.map(x => `<span class="tag warn">${esc(x)}</span>`).join("") : `<span class="tag ok">ok</span>`,
+    exc ? `<span class="tag" title="${esc(exc)}">1 video exception</span>` : ""
+  ].join("");
+  const play = when
+    ? `<a class="play" href="index.html?preview=${when}">Play</a>`
+    : `<span class="play disabled">No scheduled date to preview</span>`;
+  return `<li class="set" data-id="${esc(pid)}"><div class="set-top"><div><b>${esc(pid)}</b><small>${whoLine(f)} · ${videos} video${videos === 1 ? "" : "s"}</small><div class="tags">${tags}</div></div>${play}</div><div class="thumbs">${thumbs(rs)}</div></li>`;
+}).join("");
+
+const tab = v => {
+  $("#tabPreview").setAttribute("aria-selected", String(v === "preview"));
+  $("#tabData").setAttribute("aria-selected", String(v === "data"));
+  $("#previewView").classList.toggle("hidden", v !== "preview");
+  $("#dataView").classList.toggle("hidden", v !== "data");
+  if (location.hash !== "#" + v) history.replaceState(null, "", "#" + v);
+};
+$("#tabPreview").onclick = () => tab("preview");
+$("#tabData").onclick = () => tab("data");
+$("#answers").onchange = e => document.body.classList.toggle("answers", e.target.checked);
+tab(location.hash === "#data" ? "data" : "preview");
+const todayRow = document.querySelector(".day.today");
+if (todayRow && location.hash !== "#data") todayRow.scrollIntoView({ block: "center" });
+window.WISZONE = { puzzleFor, days: () => days.map(d => d.key + " " + d.pid), puzzles: () => ids };
+})();
+</script>
 </body>
 </html>

@@ -280,7 +280,7 @@ function renderHero() {
   let bar = $("#previewBar");
   if (isPreview()) {
     if (!bar) { bar = document.createElement("div"); bar.id = "previewBar"; bar.className = "preview-bar"; $("#stage").before(bar); }
-    bar.innerHTML = `👀 Preview · No. ${pad3(n)} · ${esc(prettyDate(state.dateKey))} · progress isn't saved <a href="schedule.html">Loading zone</a> <a href="#" id="previewExit">Exit</a>`;
+    bar.innerHTML = `👀 Preview · No. ${pad3(n)} · ${esc(prettyDate(state.dateKey))} · progress isn't saved <a href="loadingzone.html#preview">Loading zone</a> <a href="#" id="previewExit">Exit</a>`;
     $("#previewExit").onclick = e => { e.preventDefault(); goToday(); }; setTimeout(fitStage, 0);
   } else if (bar) bar.remove();
   const label = isToday() ? "Share today's puzzle" : "Share this puzzle";
@@ -687,7 +687,7 @@ function goArchive() {
   $$(".arch").forEach(b => b.onclick = () => goDate(b.dataset.key));
   window.scrollTo({ top: 0 });
 }
-function next() { if (state.mode === "archive") goArchive(); else if (isPreview()) location.href = "schedule.html"; else goArchive(); }
+function next() { if (state.mode === "archive") goArchive(); else if (isPreview()) location.href = "loadingzone.html#preview"; else goArchive(); }
 
 // ================================================================ opt-in ("Feature me") + removal
 function goOptin() { showView("optin"); setHash("#optin"); setupFeatureForm(); window.scrollTo({ top: 0 }); }
@@ -1310,7 +1310,7 @@ countVisit();
 if (!ALL.length) { $("#question").textContent = "No puzzles found. Run build.py or load a puzzle file."; return; }
 function route() {
   const h = location.hash, d = h.match(/(?:^#|&)d=(\d{4}-\d{2}-\d{2})/), p = h.match(/(?:^#|&)p=([^&]+)/);
-  const pv = h.match(/preview=(\d{4}-\d{2}-\d{2})/) || (/[?&]preview=1/.test(location.search) && location.search.match(/[?&]date=(\d{4}-\d{2}-\d{2})/));
+  const pv = h.match(/preview=(\d{4}-\d{2}-\d{2})/) || location.search.match(/[?&]preview=(\d{4}-\d{2}-\d{2})/) || (/[?&]preview=1/.test(location.search) && location.search.match(/[?&]date=(\d{4}-\d{2}-\d{2})/));
   if (pv) return goPreview(pv[1]);
   if (h.startsWith("#archive")) return goArchive();
   if (h.startsWith("#optin")) return goOptin();
