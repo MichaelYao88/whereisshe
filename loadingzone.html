@@ -142,9 +142,7 @@ for (let t = utc(epoch); t <= utc(end); t += 864e5) {
 }
 const rotOn = (S.rotation || []).some(id => by[id]);
 const span = `${days.length} scheduled days, ${fmtDate(days[0] ? days[0].key : epoch)} to ${fmtDate(days.length ? days[days.length - 1].key : end)}`;
-$("#pvNote").textContent = rotOn
-  ? `${span}. The rotation keeps going after this window. Play does not touch stats or streaks. Old schedule.html links land here.`
-  : `${span}. Nothing is scheduled after the last pinned day. Play does not touch stats or streaks. Old schedule.html links land here.`;
+$("#pvNote").textContent = `${span}. ${rotOn ? "Unpinned days follow the rotation list." : "Nothing is scheduled after the last pinned day."} Play does not touch stats or streaks. Old schedule.html links land here.`;
 $("#days").innerHTML = days.map(({ key, no, pid, how, rs }) => {
   const f = featured(rs), videos = rs.filter(r => r.media_type === "video");
   const w = warnings(pid, rs), exc = (S.exceptions || {})[pid];
