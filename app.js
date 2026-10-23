@@ -11,7 +11,7 @@ const CONFIG = {
   // Public URL used in share links. From file:// we can't share a local path, so a placeholder is used.
   siteUrl: (location.protocol.startsWith("http") ? location.origin + location.pathname : "https://whereisshe.gg/"),
   // Daily No. 1 date (launch day).
-  dailyEpoch: "2026-10-21",          // Daily No. 001 = Oct 21 2026 = she-001; the 5 featured days then repeat in order
+  dailyEpoch: "2026-10-21",          // Daily No. 001 = Oct 21 2026 = she-001; later days come from the schedule (empty rotation plays nothing)
   rounds: 5,
   maxRoundScore: 5000,
   scoreScaleKm: 1492.7,              // decay beyond the radius: 5000 * e^(-(km - radius) / 1492.7)
@@ -177,10 +177,11 @@ mq.addEventListener?.("change", () => settings.theme === "system" && applyTheme(
 
 // ================================================================ state
 const state = { mode: "daily", dateKey: todayKey(), puzzle: null, game: null, pin: null, busy: false };   // mode: daily | archive | preview (v11: Practice removed)
-const puzzleForDay = n => { const pool = dailyPool(); return pool[((n % pool.length) + pool.length) % pool.length]; };
-// v9: the daily schedule is data (schedule.json -> window.WIS_SCHEDULE, edited with tools/schedule.py): a date pinned in
-// "dates" plays that puzzle; any other date falls back to "rotation" (the day after the last pinned date = rotation[0]).
-// A custom puzzle file loaded in Settings ignores the schedule and uses the old order-based rotation.
+const puzzleForDay = n => { const pool = dailyPool(); if (!pool.length) return null; return pool[((n % pool.length) + pool.length) % pool.length]; };
+// v9: the daily schedule is data (schedule.json -> window.WIS_SCHEDULE, edited with tools/schedule.py).
+// A date listed in "dates" plays that puzzle. Any other date uses "rotation" when that list is non-empty.
+// An empty rotation is valid and returns nothing: earlier days are not replayed. A custom puzzle file loaded in
+// Settings ignores the schedule and uses the order-based pool.
 const SCHED = window.WIS_SCHEDULE || null;
 if (SCHED && validKey(SCHED.epoch)) CONFIG.dailyEpoch = SCHED.epoch;
 function puzzleForDate(key) {
@@ -188,11 +189,10 @@ function puzzleForDate(key) {
     const byId = id => ALL.find(p => p.id === id && !p.practiceOnly);
     const pinned = SCHED.dates && SCHED.dates[key] && byId(SCHED.dates[key]); if (pinned) return pinned;
     const rot = (SCHED.rotation || []).map(byId).filter(Boolean);
-    if (rot.length) {
-      const keys = Object.keys(SCHED.dates || {}).filter(validKey).sort(), last = keys[keys.length - 1];
-      const n = last && utc(key) > utc(last) ? Math.round((utc(key) - utc(last)) / 864e5) - 1 : dayNumber(key);
-      return rot[((n % rot.length) + rot.length) % rot.length];
-    }
+    if (!rot.length) return null;
+    const keys = Object.keys(SCHED.dates || {}).filter(validKey).sort(), last = keys[keys.length - 1];
+    const n = last && utc(key) > utc(last) ? Math.round((utc(key) - utc(last)) / 864e5) - 1 : dayNumber(key);
+    return rot[((n % rot.length) + rot.length) % rot.length];
   }
   return puzzleForDay(dayNumber(key));
 }
@@ -294,7 +294,21 @@ function renderDots() {
   $("#running").textContent = `${n0(totalOf(g))} pts`;
 }
 
+function showUnscheduled(key) {
+  state.puzzle = null; state.game = null; state.busy = false; state.pin = null;
+  const vid = $("#video"); try { vid.pause(); } catch {}
+  $("#stage").classList.add("hidden"); $("#result").classList.add("hidden"); $(".under-card").classList.add("hidden");
+  showView("play"); renderHero();
+  $("#heroKind").textContent = "No puzzle";
+  $("#question").textContent = "Nothing scheduled";
+  document.title = "WhereIsShe.gg · Nothing scheduled";
+  const empty = $("#emptyDay"); empty.classList.remove("hidden");
+  $("#emptyDayText").textContent = `No puzzle is pinned for ${prettyDate(key)}.`;
+  setHash(linkHash()); window.scrollTo({ top: 0 });
+}
 function openPuzzle(p) {
+  if (!p) return showUnscheduled(state.dateKey);
+  $("#emptyDay").classList.add("hidden"); $(".under-card").classList.remove("hidden");
   state.puzzle = p; state.busy = false; state.pin = null;
   showView("play"); renderHero(); $("#result").classList.add("hidden"); $("#stage").classList.remove("hidden");
   setHash(linkHash());
@@ -669,7 +683,7 @@ function goDate(key) {
 }
 // v11: Practice is gone. An old "#p=<id>" link opens the latest past day that played that puzzle (else today).
 function goLegacyPuzzle(id) {
-  for (let n = dayNumber(todayKey()); n >= 0; n--) { const k = keyFromDay(n); if (puzzleForDate(k).id === id) return goDate(k); }
+  for (let n = dayNumber(todayKey()); n >= 0; n--) { const k = keyFromDay(n), p = puzzleForDate(k); if (p && p.id === id) return goDate(k); }
   goToday();
 }
 const whoHint = p => `Who ${W(p).subj === "they" ? "are" : "is"} ${W(p).subj}? Find out after the game.`;   // in-game reminder (handle only on the Meet card)
@@ -678,9 +692,12 @@ function goArchive() {
   showView("archive"); setHash("#archive");
   const today = todayKey(), last = dayNumber(today), rows = [];
   for (let n = last; n >= 0; n--) {          // only today and earlier; future dailies are never listed
-    const key = keyFromDay(n), p = puzzleForDate(key), mine = savedFor(keyFor("archive", key, p), p);
+    const key = keyFromDay(n), p = puzzleForDate(key);
+    const when = n === last ? "Today" : prettyDate(key).replace(/, \d{4}$/, "");
+    if (!p) { rows.push(`<li><button class="arch ${n === last ? "today" : ""}" data-key="${key}"><span class="an">#${pad3(n + 1)}<small>${when}</small></span><span class="aq">Nothing scheduled<small>No puzzle pinned</small></span></button></li>`); continue; }
+    const mine = savedFor(keyFor("archive", key, p), p);
     const badge = mine && mine.done ? `<span class="ar done">${n0(mine.total ?? totalOf(mine))}</span>` : mine && mine.rounds?.length ? `<span class="ar">${mine.rounds.length}/5</span>` : `<span class="ar">Play →</span>`;
-    rows.push(`<li><button class="arch ${n === last ? "today" : ""}" data-key="${key}" data-id="${esc(p.id)}"><span class="an">#${pad3(n + 1)}<small>${n === last ? "Today" : prettyDate(key).replace(/, \d{4}$/, "")}</small></span>
+    rows.push(`<li><button class="arch ${n === last ? "today" : ""}" data-key="${key}" data-id="${esc(p.id)}"><span class="an">#${pad3(n + 1)}<small>${when}</small></span>
       <span class="aq">📍 ${esc(p.id)}<small>${esc(dayLabel(p))}</small></span>${badge}</button></li>`);
   }
   $("#archiveList").innerHTML = rows.join("");

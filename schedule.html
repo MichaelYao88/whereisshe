@@ -73,6 +73,7 @@ function puzzleFor(key) {
   return [rot[((n % rot.length) + rot.length) % rot.length], "rotation"];
 }
 function warnings(pid, rs) {   // same day rules as tools/schedule.py validate
+  if (!pid || !rs.length) return [];
   const w = [], vp = rs.map((r, i) => r.media_type === "video" ? i + 1 : 0).filter(Boolean), exc = (S.exceptions || {})[pid];
   if (rs.length !== 5) w.push(`${rs.length} rounds`);
   if (vp[0] !== 1) w.push("round 1 isn't a video");
@@ -89,13 +90,14 @@ function render() {
     const pretty = new Date(utc(key)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
     const thumbs = rs.map((r, i) => `<div class="th"><img loading="lazy" alt="Round ${i + 1}" src="${esc(r.media_type === "video" ? r.poster_url : r.image_url)}">
         <span class="rn">${i + 1}</span>${r.media_type === "video" ? '<span class="vid">▶ video</span>' : ""}<span class="pl">${esc(r.place_name)}</span></div>`).join("");
-    const w = warnings(pid, rs), exc = (S.exceptions || {})[pid];
-    out.push(`<section class="day ${key === today ? "today" : utc(key) < utc(today) ? "past" : ""}" data-date="${key}" data-id="${esc(pid)}">
+    const w = warnings(pid, rs), exc = pid && (S.exceptions || {})[pid];
+    const howLabel = how === "none" ? "nothing" : how;
+    out.push(`<section class="day ${key === today ? "today" : utc(key) < utc(today) ? "past" : ""}" data-date="${key}" data-id="${esc(pid || "")}" data-how="${how}">
       <div class="dno">No. ${String(no).padStart(3, "0")}<small>${esc(pretty)}</small>
-        ${key === today ? '<span class="tag now">Today</span> ' : ""}<span class="tag ${how === "rotation" ? "rot" : ""}">${how}</span>${w.map(x => ` <span class="tag warn">${esc(x)}</span>`).join("")}${exc ? ` <span class="tag rot" title="${esc(exc)}">1 video (exception)</span>` : ""}</div>
-      <div class="body"><div class="meta"><b>${esc(pid || "nothing scheduled")}</b><span class="who"> · @${esc(f.featured_handle || "")}${f.featured_name ? " (" + esc(f.featured_name) + ")" : ""}</span> · ${rs.filter(r => r.media_type === "video").length} video(s)</div>
+        ${key === today ? '<span class="tag now">Today</span> ' : ""}<span class="tag ${how === "pinned" ? "" : "rot"}">${howLabel}</span>${w.map(x => ` <span class="tag warn">${esc(x)}</span>`).join("")}${exc ? ` <span class="tag rot" title="${esc(exc)}">1 video (exception)</span>` : ""}</div>
+      <div class="body"><div class="meta"><b>${esc(pid || "nothing scheduled")}</b>${pid ? `<span class="who"> · @${esc(f.featured_handle || "")}${f.featured_name ? " (" + esc(f.featured_name) + ")" : ""}</span> · ${rs.filter(r => r.media_type === "video").length} video(s)` : ""}</div>
         <div class="thumbs">${thumbs}</div></div>
-      <div class="act"><a class="play" href="index.html#preview=${key}">Play this day</a></div></section>`);
+      <div class="act">${pid ? `<a class="play" href="index.html#preview=${key}">Play this day</a>` : `<a class="play" href="index.html#preview=${key}">Open this day</a>`}</div></section>`);
   }
   $("#list").innerHTML = out.join("") || "<p>No days in this range.</p>";
 }

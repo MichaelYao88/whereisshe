@@ -209,6 +209,9 @@ a{color:var(--link)}
 
 /* opt-in form */
 .card-box{background:var(--surface2);border-radius:20px;box-shadow:var(--shadow-soft);padding:20px}
+.empty-day{margin-top:14px}
+.empty-day h2{margin:0 0 8px;font-size:22px;letter-spacing:-.03em}
+.empty-day p{margin:0;color:var(--muted);font-size:15px;line-height:1.45}
 .optin-form{display:flex;flex-direction:column;gap:14px}
 .optin-form label{display:flex;flex-direction:column;gap:6px;font-weight:700;font-size:13px}
 .optin-form label small,.optin-form .opt{font-weight:500;color:var(--muted);font-size:12px}

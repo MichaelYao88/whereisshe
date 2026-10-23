@@ -1,0 +1,17 @@
+{
+  "epoch": "2026-10-21",
+  "dates": {
+    "2026-10-21": "she-001",
+    "2026-10-22": "she-002",
+    "2026-10-23": "she-003",
+    "2026-10-24": "she-004",
+    "2026-10-25": "she-005",
+    "2026-10-26": "he-001",
+    "2026-10-27": "she-006",
+    "2026-10-28": "she-007"
+  },
+  "rotation": [],
+  "exceptions": {
+    "he-001": "single video: Michael's only usable clip is Mumbai (round 1); the other clip in that highlight is a street vendor in the same city, so no round-5 video"
+  }
+}
