@@ -52,18 +52,89 @@ const BUILD = "3148c28028";   // stamped by tools/deploy.sh; must match window.W
 const BANDS = [[100, "🟩", "e-g"], [500, "🟨", "e-y"], [2000, "🟧", "e-o"], [Infinity, "🟥", "e-r"]];   // km thresholds
 
 // ================================================================
-// COMMUNITY STATS: BACKEND PLUG-IN POINT
+// COMMUNITY STATS
 // ----------------------------------------------------------------
-// The prototype has NO backend, so no real player data exists.
-// Implement these two against Supabase or a Cloudflare Worker + D1/KV:
-//   submit: await supabase.from('results').insert({ puzzle_id, day, total, rounds })
-//   fetch:  await supabase.rpc('puzzle_stats', { puzzle_id, day })
-//           -> { players, avgTotal, pctBeaten /* % of players you beat */, perRoundAvg: [n,n,n,n,n] }
-// Return null from fetch() to show the "coming soon" placeholder.
+// Snapshots live in Supabase (community_snapshots). A finished daily game
+// inserts one community_play_events row. The 12-hour refresh blends a
+// deterministic seed until 40 real finishes, then switches to real scores.
+// fetch() returns { players, avgTotal, pctBeaten, perRoundAvg } or null.
+// The same seed formula is communitySeed(), used only when the row can't be read.
+// See SETUP.md.
 // ================================================================
+function fnv1a(s) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h >>> 0;
+}
+function communitySeed(puzzleId, dayKey) {
+  const h = salt => fnv1a(puzzleId + "|" + dayKey + "|" + salt);
+  const players = 48 + (h("n") % 133);
+  const baseW = [8, 18, 38, 26, 10];
+  const weights = baseW.map((w, i) => Math.max(1, w + (h("w" + i) % 5) - 2));
+  const sumW = weights.reduce((a, b) => a + b, 0);
+  const counts = weights.map(w => Math.floor(players * w / sumW));
+  counts[2] += players - counts.reduce((a, b) => a + b, 0);
+  const mins = [0, 5000, 10000, 15000, 20000], maxs = [5000, 10000, 15000, 20000, 25001], mids = [2500, 7500, 12500, 17500, 22500];
+  const histogram = counts.map((n, i) => ({ min: mins[i], max: maxs[i], n }));
+  const avgTotal = Math.round(counts.reduce((s, n, i) => s + n * mids[i], 0) / players);
+  const avgs = [0, 1, 2, 3, 4].map(i => Math.max(600, Math.min(4600, Math.round(avgTotal / 5 + (h("r" + i) % 801) - 400))));
+  avgs[4] = Math.max(0, Math.min(5000, avgs[4] + (avgTotal - avgs.reduce((a, b) => a + b, 0))));
+  return { players, avgTotal, histogram, perRoundAvg: avgs, seeded: true };
+}
+function pctFromHistogram(hist, total) {
+  const bands = Array.isArray(hist) ? hist : [];
+  let players = 0, below = 0;
+  for (const b of bands) {
+    const n = +b.n || 0, min = +b.min, max = +b.max;
+    if (!n || !(max > min)) continue;
+    players += n;
+    if (total >= max) below += n;
+    else if (total > min) below += n * (total - min) / (max - min);
+  }
+  if (!players) return 0;
+  return Math.max(0, Math.min(100, Math.round(100 * below / players)));
+}
+function communityFromRow(row, total) {
+  if (!row || !(+row.players > 0)) return null;
+  const per = row.perRoundAvg || row.per_round_avg;
+  return {
+    players: +row.players,
+    avgTotal: +row.avgTotal || +row.avg_total || 0,
+    pctBeaten: pctFromHistogram(row.histogram, total),
+    perRoundAvg: Array.isArray(per) ? per.map(Number) : [],
+    seeded: !!row.seeded,
+  };
+}
 const CommunityStats = {
-  async submit(result) { /* TODO backend */ return false; },
-  async fetch(puzzleId, dayKey) { /* TODO backend */ return null; },
+  async submit(result) {
+    try {
+      if (!result || result.mode !== "daily" || !accountsOn()) return false;
+      const rounds = (result.rounds || []).map(r => Math.round(+r.pts || 0));
+      const total = Math.round(+result.total || 0);
+      if (rounds.length !== 5 || rounds.some(n => n < 0 || n > 5000) || total !== rounds.reduce((a, b) => a + b, 0)) return false;
+      const sentKey = "wis.communitySent.v1", sent = load(sentKey, {}), id = result.day + ":" + result.puzzleId;
+      if (sent[id]) return true;
+      if (Cloud.ready) await Cloud.ready;
+      if (!Cloud.sb) return false;
+      const { error } = await Cloud.sb.rpc("submit_community_play", { p_puzzle_id: result.puzzleId, p_day_key: result.day, p_total: total, p_rounds: rounds });
+      if (error) return false;
+      sent[id] = 1; save(sentKey, sent); return true;
+    } catch { return false; }
+  },
+  async fetch(puzzleId, dayKey, total) {
+    if (!puzzleId || !dayKey) return null;
+    let row = null;
+    try {
+      if (accountsOn()) {
+        if (Cloud.ready) await Promise.race([Cloud.ready, new Promise(r => setTimeout(r, 4000))]);
+        if (Cloud.sb) {
+          const { data, error } = await Cloud.sb.from("community_snapshots").select("players,avg_total,histogram,per_round_avg,seeded").eq("puzzle_id", puzzleId).eq("day_key", dayKey).maybeSingle();
+          if (!error && data) row = data;
+        }
+      }
+    } catch {}
+    return communityFromRow(row, total) || communityFromRow(communitySeed(puzzleId, dayKey), total);
+  },
 };
 
 // ================================================================ helpers
@@ -521,7 +592,7 @@ function submitGuess() {
   if (g.rounds.length === CONFIG.rounds) {
     g.done = true; g.total = totalOf(g); g.emoji = g.rounds.map(x => band(x.dist)[1]).join("");
     if (isToday()) recordStats(g);
-    if (!isPreview()) CommunityStats.submit({ puzzleId: p.id, day: state.dateKey, mode: state.mode, total: g.total, rounds: g.rounds });
+    if (!isPreview()) CommunityStats.submit({ puzzleId: p.id, day: state.dateKey, mode: state.mode, total: g.total, rounds: g.rounds }).catch(() => {});
   }
   setResult(g); revealRound(g.cur, true);
   if (g.done && !isPreview()) cloudAfterGame();   // v11: sync after each finished game (signed-in players only)
@@ -610,11 +681,20 @@ function drawSummary(p, g) {
 }
 async function renderCommunity(p, total) {
   const body = $("#communityBody"), badge = $("#communityBadge");
-  let data = null; try { data = await CommunityStats.fetch(p.id, state.dateKey); } catch {}
-  if (data) { badge.textContent = `${data.players.toLocaleString()} players`; body.textContent = `You beat ${data.pctBeaten}% of players.`; return; } // TODO: richer render
-  badge.textContent = "Coming soon";
-  body.innerHTML = `No player data yet. This prototype has no backend; once one is connected this shows what % of players you beat and the average per round.` +
-    ["Round 1", "Round 2", "Round 3", "Round 4", "Round 5"].map(n => `<div class="crow" aria-hidden="true"><span class="cn">${n}</span><span class="cb"><i style="width:0"></i></span><span class="cp">–</span></div>`).join("");
+  badge.textContent = "…";
+  let data = null; try { data = await CommunityStats.fetch(p.id, state.dateKey, total); } catch {}
+  if (!data) {
+    badge.textContent = "Coming soon";
+    body.innerHTML = `No player data yet.` +
+      ["Round 1", "Round 2", "Round 3", "Round 4", "Round 5"].map(n => `<div class="crow" aria-hidden="true"><span class="cn">${n}</span><span class="cb"><i style="width:0"></i></span><span class="cp">–</span></div>`).join("");
+    return;
+  }
+  badge.textContent = `${n0(data.players)} players`;
+  const bars = (data.perRoundAvg || []).slice(0, 5).map((avg, i) => {
+    const w = Math.max(0, Math.min(100, Math.round(+avg / CONFIG.maxRoundScore * 100)));
+    return `<div class="crow"><span class="cn">Round ${i + 1}</span><span class="cb"><i style="width:${w}%"></i></span><span class="cp">${n0(avg)}</span></div>`;
+  }).join("");
+  body.innerHTML = `<p class="community-lead">You beat <b>${data.pctBeaten}%</b> of players. Average score ${n0(data.avgTotal)}.</p>${bars}`;
 }
 
 // ================================================================ stats (today's daily only)
@@ -910,7 +990,8 @@ const AUTH_REDIRECT = (() => {
   const q = new URLSearchParams(h.slice(1)); try { history.replaceState(null, "", location.pathname + location.search); } catch {}
   return { access_token: q.get("access_token"), refresh_token: q.get("refresh_token"), error: q.get("error_description") || q.get("error") };
 })();
-async function cloudInit() {
+function cloudInit() {
+  Cloud.ready = (async () => {
   if (!accountsOn()) return;
   Cloud.state = "loading";
   try { await loadScript("vendor/supabase/supabase.js" + vq); } catch (e) { Cloud.state = "error"; console.warn(e); return; }
@@ -931,6 +1012,8 @@ async function cloudInit() {
   const { data } = await Cloud.sb.auth.getSession(); if (data && data.session) onAuth("INITIAL", data.session); else renderAccountUI();
   window.addEventListener("online", () => { if ((load(LS.sync, {}) || {}).pending) syncNow("online"); });
   window.addEventListener("focus", () => { if (Cloud.user && premiumOn() && !isPremium()) refreshProfile(); });
+  })();
+  return Cloud.ready;
 }
 function onAuth(ev, session) {
   Cloud.session = session || null;
@@ -1260,7 +1343,7 @@ async function handleFiles(files) {
   } catch (e) { console.error(e); toast("Couldn't read that file: " + e.message); }
 }
 window.WISLoadFiles = handleFiles;
-window.WIS = { videoState: () => ({ state: VS.state, tries: VS.tries, round: VS.round, src: VS.url, log: VS.log.slice(), preload: preloadNext.el ? preloadNext.el.dataset.src : null }), crossPromoCheck, visits: () => load(LS.visits, 0), Zoom, fitMedia, summaryMap: () => summaryMap, CONFIG, dailyPool, puzzleForDate, schedule: () => SCHED, mode: () => state.mode, dockMode, puzzleHash, scoreFor, isPerfect, haversineKm, band, resultText, puzzles: () => ALL, map: () => map,
+window.WIS = { videoState: () => ({ state: VS.state, tries: VS.tries, round: VS.round, src: VS.url, log: VS.log.slice(), preload: preloadNext.el ? preloadNext.el.dataset.src : null }), crossPromoCheck, visits: () => load(LS.visits, 0), Zoom, fitMedia, summaryMap: () => summaryMap, CONFIG, dailyPool, puzzleForDate, schedule: () => SCHED, mode: () => state.mode, dockMode, puzzleHash, scoreFor, isPerfect, haversineKm, band, resultText, puzzles: () => ALL, map: () => map, communitySeed, pctFromHistogram,
   features: () => ({ accounts: accountsOn(), premium: premiumOn(), submissions: submissionsOn(), ads: adsOn() }),
   cloud: () => ({ state: Cloud.state, user: Cloud.user ? { id: Cloud.user.id, email: Cloud.user.email } : null, premium: isPremium(), profile: Cloud.profile, sync: load(LS.sync, null), syncing: !!Cloud.syncing }),
   syncNow, mergeStats, mergeResults, statsFromDays, ledgerFromResults, feature: () => ({ files: FF.files.length, gate: !$("#ffGate").classList.contains("hidden"), form: !$("#featureForm").classList.contains("hidden") }) };   // test hooks

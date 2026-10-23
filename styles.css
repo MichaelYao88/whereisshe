@@ -103,6 +103,10 @@ a{color:var(--link)}
 .community-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:14px;gap:8px}
 .badge{font-size:9.5px;font-weight:700;padding:4px 9px;border-radius:999px;background:rgba(var(--ink-rgb),.07);color:var(--muted);text-transform:uppercase;letter-spacing:.12em;white-space:nowrap}
 .community-body{margin-top:8px;font-size:13px;color:var(--muted);line-height:1.45}
+.community-lead{margin:2px 0 8px;color:var(--ink);font-size:14px}
+.community-lead b{font-weight:700}
+.community .crow .cn{width:62px;flex:none}
+.community .crow .cp{width:48px;color:var(--ink);font-variant-numeric:tabular-nums}
 .crow{display:flex;align-items:center;gap:8px;margin:8px 0}
 .crow .cn{width:44%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .crow .cb{flex:1;height:6px;border-radius:99px;background:rgba(var(--ink-rgb),.08);overflow:hidden}
