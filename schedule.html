@@ -3,108 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow, noarchive">
-<title>WhereIsShe · schedule (spoilers)</title>
-<style>
-:root{--bg:#f6f5f1;--card:#fff;--ink:#14161c;--muted:#6b7280;--brand:#4f46e5;--line:#e5e7eb}
-*{box-sizing:border-box}body{margin:0;font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
-header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:12px 16px}
-.wrap{max-width:1100px;margin:0 auto}
-h1{margin:0;font-size:20px;letter-spacing:-.02em}
-.spoiler{display:inline-block;margin-left:8px;padding:2px 9px;border-radius:999px;background:#dc2626;color:#fff;font-size:11px;font-weight:800;letter-spacing:.06em;vertical-align:middle}
-.controls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-top:10px;font-size:13.5px}
-.controls input[type=date],.controls select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fff}
-.controls label{display:inline-flex;gap:6px;align-items:center}
-.note{color:var(--muted);font-size:12.5px;margin:6px 0 0}
-main{padding:14px 16px 40px}
-.day{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:0 0 12px;display:grid;grid-template-columns:150px 1fr auto;gap:12px;align-items:center}
-.day.today{border:2px solid var(--brand)}
-.day.past{opacity:.72}
-.dno{font-weight:800;font-size:18px}.dno small{display:block;font-weight:600;font-size:12.5px;color:var(--muted)}
-.tag{display:inline-block;margin-top:4px;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;background:#eef2ff;color:#3730a3}
-.tag.rot{background:#f3f4f6;color:#4b5563}.tag.now{background:var(--brand);color:#fff}
-.tag.warn{background:#fee2e2;color:#991b1b}
-.meta{font-size:13px;color:var(--muted);margin-bottom:6px}.meta b{color:var(--ink)}
-.thumbs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
-.th{position:relative;border-radius:9px;overflow:hidden;background:#ddd}
-.th img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block}
-.th .rn{position:absolute;left:5px;top:5px;background:rgba(0,0,0,.6);color:#fff;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:999px}
-.th .vid{position:absolute;right:5px;top:5px;background:#fff;color:#111;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:999px}
-.th .pl{padding:4px 6px 5px;font-size:10.5px;line-height:1.25;font-weight:700;color:#fff;background:#1f2937;display:none;min-height:3.9em}
-body.answers .th .pl{display:block}
-.who{display:none}body.answers .who{display:inline}
-.play{display:inline-block;padding:10px 16px;border-radius:999px;background:var(--brand);color:#fff;font-weight:800;text-decoration:none;white-space:nowrap}
-@media (max-width:760px){
-  .day{grid-template-columns:1fr auto;grid-template-areas:"no play" "body body"}
-  .day .dno{grid-area:no}.day .body{grid-area:body}.day .act{grid-area:play}
-  .thumbs{gap:4px}.th .pl{font-size:9.5px}
-}
-</style>
+<meta name="robots" content="noindex, nofollow">
+<title>Loading Zone · WhereIsShe</title>
+<script>
+var h = location.hash;
+if (h === "#vault" || h === "#datasets") h = "#data";
+else if (h === "#upcoming") h = "#preview";
+location.replace("loadingzone.html" + location.search + h);
+</script>
+<meta http-equiv="refresh" content="0; url=loadingzone.html">
 </head>
 <body>
-<header><div class="wrap">
-  <h1>WhereIsShe schedule <span class="spoiler">SPOILERS</span></h1>
-  <div class="controls">
-    <label>From <input type="date" id="from"></label>
-    <label>Days <select id="days"><option>7</option><option selected>14</option><option>28</option><option>60</option></select></label>
-    <label><input type="checkbox" id="answers"> Show places &amp; who's featured</label>
-    <a href="index.html">Back to the game</a>
-  </div>
-  <p class="note">Unlisted page for planning. "Play this day" opens the game in preview mode: nothing is saved, and your real daily progress, streak and stats stay untouched. Edit the schedule with <code>tools/schedule.py</code>.</p>
-</div></header>
-<main class="wrap" id="list"></main>
-<script src="puzzles-data.js?v=3148c28028"></script>
-<script>
-(() => {
-"use strict";
-const $ = s => document.querySelector(s), esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const S = window.WIS_SCHEDULE || {}, ROWS = window.WIS_PUZZLE_ROWS || [];
-const by = {}; ROWS.forEach(r => (by[r.puzzle_id] = by[r.puzzle_id] || []).push(r));
-Object.values(by).forEach(rs => rs.sort((a, b) => a.round - b.round));
-const utc = k => { const [y, m, d] = k.split("-").map(Number); return Date.UTC(y, m - 1, d); };
-const keyOf = t => { const d = new Date(t); return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`; };
-const now = new Date(), today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-const pinnedKeys = Object.keys(S.dates || {}).sort(), lastPinned = pinnedKeys[pinnedKeys.length - 1];
-// same rule as app.js puzzleForDate() and tools/schedule.py puzzle_for()
-function puzzleFor(key) {
-  const pid = (S.dates || {})[key]; if (pid && by[pid]) return [pid, "pinned"];
-  const rot = (S.rotation || []).filter(id => by[id]); if (!rot.length) return [null, "none"];
-  const n = lastPinned && utc(key) > utc(lastPinned) ? Math.round((utc(key) - utc(lastPinned)) / 864e5) - 1 : Math.round((utc(key) - utc(S.epoch)) / 864e5);
-  return [rot[((n % rot.length) + rot.length) % rot.length], "rotation"];
-}
-function warnings(pid, rs) {   // same day rules as tools/schedule.py validate
-  const w = [], vp = rs.map((r, i) => r.media_type === "video" ? i + 1 : 0).filter(Boolean), exc = (S.exceptions || {})[pid];
-  if (rs.length !== 5) w.push(`${rs.length} rounds`);
-  if (vp[0] !== 1) w.push("round 1 isn't a video");
-  if (exc) { if (vp.join() !== "1") w.push(`videos in rounds ${vp}`); }
-  else if (vp.length >= 3 ? !(vp[0] === 1 && vp[1] === 2 && vp[vp.length - 1] === 5 && vp.length === 3) : vp.join() !== "1,5") w.push(`videos in rounds ${vp}`);
-  return w;
-}
-function render() {
-  const from = $("#from").value || today, days = +$("#days").value, out = [];
-  for (let k = 0; k < days; k++) {
-    const key = keyOf(utc(from) + k * 864e5), no = Math.round((utc(key) - utc(S.epoch)) / 864e5) + 1;
-    if (no < 1) continue;
-    const [pid, how] = puzzleFor(key), rs = by[pid] || [], f = rs.find(r => r.featured_handle) || {};
-    const pretty = new Date(utc(key)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
-    const thumbs = rs.map((r, i) => `<div class="th"><img loading="lazy" alt="Round ${i + 1}" src="${esc(r.media_type === "video" ? r.poster_url : r.image_url)}">
-        <span class="rn">${i + 1}</span>${r.media_type === "video" ? '<span class="vid">▶ video</span>' : ""}<span class="pl">${esc(r.place_name)}</span></div>`).join("");
-    const w = warnings(pid, rs), exc = (S.exceptions || {})[pid];
-    out.push(`<section class="day ${key === today ? "today" : utc(key) < utc(today) ? "past" : ""}" data-date="${key}" data-id="${esc(pid)}">
-      <div class="dno">No. ${String(no).padStart(3, "0")}<small>${esc(pretty)}</small>
-        ${key === today ? '<span class="tag now">Today</span> ' : ""}<span class="tag ${how === "rotation" ? "rot" : ""}">${how}</span>${w.map(x => ` <span class="tag warn">${esc(x)}</span>`).join("")}${exc ? ` <span class="tag rot" title="${esc(exc)}">1 video (exception)</span>` : ""}</div>
-      <div class="body"><div class="meta"><b>${esc(pid || "nothing scheduled")}</b><span class="who"> · @${esc(f.featured_handle || "")}${f.featured_name ? " (" + esc(f.featured_name) + ")" : ""}</span> · ${rs.filter(r => r.media_type === "video").length} video(s)</div>
-        <div class="thumbs">${thumbs}</div></div>
-      <div class="act"><a class="play" href="index.html#preview=${key}">Play this day</a></div></section>`);
-  }
-  $("#list").innerHTML = out.join("") || "<p>No days in this range.</p>";
-}
-$("#from").value = today; $("#from").min = S.epoch || "";
-$("#from").onchange = $("#days").onchange = render;
-$("#answers").onchange = e => document.body.classList.toggle("answers", e.target.checked);
-render();
-window.WISSCHED = { puzzleFor, render };
-})();
-</script>
+<p><a href="loadingzone.html">Loading Zone</a></p>
 </body>
 </html>
