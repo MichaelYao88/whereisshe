@@ -1,5 +1,17 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  // PostHog (whereisshe). Autocapture and session replay stay off so typed text is never sent.
+  !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+  posthog.init('phc_BFzhf5CAX9wKcoGBVXnX3uPb4T2LAjeD3ZfBGiHWvFxc', {
+    api_host: 'https://us.i.posthog.com',
+    person_profiles: 'identified_only',
+    autocapture: false,
+    disable_session_recording: true
+  });
+  posthog.register({ site: 'whereisshe' });
+</script>
+
 <title>About WhereIsShe.gg · A daily geography game</title><link rel="canonical" href="https://whereisshe.gg/about.html"><meta property="og:type" content="website"><meta property="og:url" content="https://whereisshe.gg/about.html"><meta property="og:title" content="About WhereIsShe.gg"><meta property="og:site_name" content="WhereIsShe"><meta property="og:description" content="WhereIsShe.gg is a free daily geography game. Five photos, one map, a new puzzle every day. Everyone featured opted in."><meta property="og:image" content="https://whereisshe.gg/og.png"><meta name="description" content="WhereIsShe.gg is a free daily geography game. Five photos, one map, a new puzzle every day. Everyone featured opted in."><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="About WhereIsShe.gg"><meta name="twitter:description" content="A free daily geography game. Five photos, one map, a new puzzle every day. Everyone featured opted in."><meta name="twitter:image" content="https://whereisshe.gg/og.png"><meta name="color-scheme" content="light dark">
 <style>
   :root{--bg:#F5F3EE;--card:#fff;--ink:#151821;--muted:#6C6B67;--brand:#3B5BFF;--line:rgba(21,24,33,.1)}
@@ -18,7 +30,7 @@
 <p><b>WhereIsShe</b> is a free daily geography game in the spirit of GeoGuessr. Each day you get five photos or short videos of one person somewhere in the world, and you guess where each one was taken by dropping a pin on a world map. The closer your pin, the more points you score, up to 25,000 for a perfect day. Everyone in the world gets the same puzzle on the same day, so you can compare scores with friends.</p>
 <h2>The people in the game opted in</h2>
 <p>Every person featured in WhereIsShe chose to be in it. They contacted us or submitted their own photos through <b>Feature me</b>, confirmed that they are the person shown, that they are 18 or older and that they agree to the photos being used in the game. Each featured person sees and approves their day before it goes live, and can have their photos and profile link removed at any time, for any reason. We never use photos of people who haven't agreed to be featured.</p>
-<p>Who the day's person is stays a surprise until the end: after the last round you meet them, with a link to the profile they chose to share.</p>
+<p>Who the day's person is stays a surprise until the end: after the last round the game shows their name, with a link to the profile they chose to share.</p>
 <h2>Pins show where a photo was taken, never where anyone lives</h2>
 <p>The answer for each round is the place where that photo or video was taken: a beach, a city square, a mountain viewpoint. We never pin a home address or anywhere near one, and we don't accept photos taken at or near someone's home. The game is about recognising places in the world, not about finding people, and using it to try to locate someone is against our <a href="terms.html">terms</a>.</p>
 <h2>Who runs it</h2>

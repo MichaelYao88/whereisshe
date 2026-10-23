@@ -1,5 +1,17 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  // PostHog (whereisshe). Autocapture and session replay stay off so typed text is never sent.
+  !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+  posthog.init('phc_BFzhf5CAX9wKcoGBVXnX3uPb4T2LAjeD3ZfBGiHWvFxc', {
+    api_host: 'https://us.i.posthog.com',
+    person_profiles: 'identified_only',
+    autocapture: false,
+    disable_session_recording: true
+  });
+  posthog.register({ site: 'whereisshe' });
+</script>
+
 <title>Privacy policy · WhereIsShe</title><link rel="canonical" href="https://whereisshe.gg/privacy.html"><meta property="og:url" content="https://whereisshe.gg/privacy.html"><meta property="og:title" content="Privacy policy · WhereIsShe"><meta property="og:site_name" content="WhereIsShe"><meta name="color-scheme" content="light dark">
 <style>
   :root{--bg:#F5F3EE;--card:#fff;--ink:#151821;--muted:#6C6B67;--brand:#3B5BFF;--line:rgba(21,24,33,.1)}
@@ -31,11 +43,13 @@
 <h2>Premium payments</h2>
 <p>Payments are handled by <b>Lemon Squeezy</b> (merchant of record). We never see or store your card details. Lemon Squeezy tells us that an order or subscription was paid, cancelled or refunded, with your account ID and email, so we can switch Premium on or off. See <a href="https://www.lemonsqueezy.com/privacy" rel="noopener">Lemon Squeezy's privacy policy</a>.</p>
 <h2>Cookies and local storage</h2>
-<p>WhereIsShe itself doesn't set tracking cookies and doesn't use analytics. It uses your browser's <b>local storage</b> (and session storage for the current tab) for things the game needs to work:</p>
+<p>WhereIsShe uses your browser's <b>local storage</b> (and session storage for the current tab) for things the game needs to work:</p>
 <ul><li>your progress, results, stats and streak, and settings such as theme and sound (keys starting with <code>wis.</code>);</li>
 <li>if you sign in, your login session (a Supabase token);</li>
 <li>small flags such as whether you've seen the welcome card.</li></ul>
 <p>This data stays on your device unless you sign in (then your stats, results and settings are synced to your account). You can delete it at any time with “Clear my game data” in the menu, or by clearing your browser's site data for whereisshe.gg.</p>
+<h2>Product analytics (PostHog)</h2>
+<p>Public pages load <b>PostHog</b> to count visits and three game actions: starting a daily or archive game, finishing a five-round game, and tapping a share button. A finished game sends only whether every pin was under 100 km and how many rounds were played. These events do not include your name, email, Instagram handle, map coordinates, or anything you type into a form. Click recording and session replay are off. PostHog keeps an anonymous id (a cookie and/or local storage) so visits can be counted; we do not create a PostHog profile for you, and we do not sell this data. See <a href="https://posthog.com/privacy" rel="noopener">PostHog's privacy policy</a>. Clearing site data for whereisshe.gg resets that id.</p>
 <h2>Google AdSense and third-party advertising cookies</h2>
 <ul><li>Free players may see ads served by <b>Google AdSense</b>. Third-party vendors, including Google, use cookies (and similar technologies such as local storage and device identifiers) to serve ads based on your previous visits to this website and other websites, and to measure how ads perform and prevent fraud.</li>
 <li>Google's use of advertising cookies enables it and its partners to serve ads to you based on your visits to this site and/or other sites on the Internet. Learn more in <a href="https://policies.google.com/technologies/ads" rel="noopener">how Google uses cookies in advertising</a> and <a href="https://policies.google.com/technologies/partner-sites" rel="noopener">how Google uses information from sites that use its services</a>.</li>
@@ -46,9 +60,9 @@
 <ul><li>If you're in the European Economic Area, the United Kingdom or Switzerland, ads are only shown after a consent message from a <b>Google-certified consent management platform</b> (Google's own Privacy &amp; messaging tool). It asks whether you agree to cookies and personalised ads before any are used.</li>
 <li>If you don't consent, Google may show non-personalised or limited ads, which use cookies only for things like frequency capping, fraud prevention and aggregate measurement, where the law allows.</li>
 <li>You can change or withdraw your choice at any time from the privacy/cookie settings link shown with the consent message, or by clearing your browser's site data for whereisshe.gg (the message is then shown again).</li>
-<li>The legal bases we rely on are: performing our agreement with you (the game, your account, Premium), our legitimate interest in keeping the service secure and free of spam, and your consent for ad cookies and personalised ads.</li></ul>
+<li>The legal bases we rely on are: performing our agreement with you (the game, your account, Premium), our legitimate interest in keeping the service secure and free of spam and in understanding how the game is played (the PostHog events above), and your consent for ad cookies and personalised ads.</li></ul>
 <h2>Other services the game loads</h2>
-<p>Map tiles come from OpenFreeMap (and Esri as a fallback), and the site is hosted on GitHub Pages (GitHub, Inc.). Like any website, these services receive your IP address and browser details when your browser loads files from them.</p>
+<p>Map tiles come from OpenFreeMap (and Esri as a fallback), product analytics go to PostHog (hosted in the US), and the site is hosted on GitHub Pages (GitHub, Inc.). Like any website, these services receive your IP address and browser details when your browser loads files from them.</p>
 <h2>Keeping and deleting data</h2>
 <ul><li><b>Game data in your browser</b> stays until you clear it (“Clear my game data”, or your browser's site data).</li>
 <li><b>Your account and synced stats</b> stay until you ask us to delete your account. When you do, we delete your profile, synced stats and settings.</li>

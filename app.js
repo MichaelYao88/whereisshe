@@ -22,8 +22,8 @@ const CONFIG = {
   // (clickedAt) stops it. Never in preview, archive, or on Loading Zone (that page does not load this app).
   crossPromo: {
     enabled: true, url: "https://ranki.gg",
-    title: "Like WhereIsShe?",
-    blurb: "Try the creator’s other game — Ranki: a daily ranking puzzle.",
+    title: "From the same creator",
+    blurb: "Ranki is a separate daily ranking puzzle, not an ad.",
     cta: "Play Ranki →", dismiss: "Not now",
     minPlayed: 5, minStreak: 3, snoozeDays: 7,
   },
@@ -47,6 +47,8 @@ const CONFIG = {
   submissions: { enabled: true, maxFiles: 5, maxFileMB: 25, maxLinks: 10 },
   // Google AdSense Display unit "whereisshe" for the post-round-5 placement. Never requested for Premium players.
   ads: { enabled: true, client: "ca-pub-5196178239625142", slot: "7982022596" },
+  // PostHog product analytics. The <head> snippet inits early with this key and host; custom events fire only when enabled and posthog.capture exists.
+  analytics: { enabled: true, provider: "posthog", apiKey: "phc_BFzhf5CAX9wKcoGBVXnX3uPb4T2LAjeD3ZfBGiHWvFxc", apiHost: "https://us.i.posthog.com" },
 };
 // Tests only (never on the live site): a localhost page may override CONFIG, e.g. to point at the mock backend.
 (function mergeTestConfig(dst, src) { if (!src || !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
@@ -204,7 +206,7 @@ const W = p => PRONOUNS[(p && p.featured && p.featured.pronoun) || "she"];
 const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
 // v10 heading: just the day code (+ daily No. on dated days). Never "Who is she?" (only the bottom reminder says that), never the handle.
 const dayTitle = p => !state.dateKey ? p.id : `${p.id} · No. ${pad3(dayNumber(state.dateKey) + 1)}`;
-const whereQ = p => { const w = W(p); return `Where ${w.subj === "they" ? "are" : "is"} ${w.subj}?`; };
+const whereQ = () => "Guess where it was taken";   // place, not the person: keeps photo alt text off dating-style "where is she" phrasing
 // focus: where to centre the starting (cropped) view, "x,y" or [x,y] or {x,y} in 0-1 of the media; null = centre
 const parseFocus = v => { if (v == null || v === "") return null; let a = Array.isArray(v) ? v : typeof v === "object" ? [v.x, v.y] : String(v).split(/[ ,;]+/);
   const x = parseFloat(a[0]), y = parseFloat(a[1]); return isFinite(x) && isFinite(y) ? [Math.min(1, Math.max(0, x)), Math.min(1, Math.max(0, y))] : null; };
@@ -283,6 +285,13 @@ const resultKey = () => keyFor(state.mode, state.dateKey, state.puzzle);
 // preview mode (schedule.html "Play this day"): progress lives only in memory, never in localStorage, stats or streaks
 const previewStore = {};
 const isPreview = () => state.mode === "preview";
+// Custom events only. The head snippet already loaded PostHog; this never injects a script and never sends typed text.
+function track(event, props) {
+  const a = CONFIG.analytics;
+  if (!a || !a.enabled || a.provider !== "posthog" || !a.apiKey) return;
+  if (typeof posthog === "undefined" || typeof posthog.capture !== "function") return;
+  try { props ? posthog.capture(event, props) : posthog.capture(event); } catch {}
+}
 // a saved game is only used if it belongs to exactly this puzzle (id + content hash) and is internally consistent
 function validSaved(r, p) {
   if (!r || typeof r !== "object" || r.id !== p.id || r.h !== puzzleHash(p) || !Array.isArray(r.rounds)) return false;
@@ -397,7 +406,11 @@ function openPuzzle(p) {
   const g = state.game;
   // Resume only this puzzle's own progress, and always at a playable point: never re-open an old guess's reveal map.
   if (g.done) { g.adSeen = true; showRound(CONFIG.rounds - 1, true); showResults(false); }
-  else showRound(g.rounds.length, false);                     // next unguessed round (round 1 on a fresh game)
+  else {
+    // A new daily or archive session (round 1, nothing guessed yet). Resumes and Loading Zone previews are not starts.
+    if (!isPreview() && !(g.rounds && g.rounds.length)) track("game_started");
+    showRound(g.rounds.length, false);                     // next unguessed round (round 1 on a fresh game)
+  }
   window.scrollTo({ top: 0 });
 }
 function showRound(i, revealed) {
@@ -559,7 +572,7 @@ function showMedia(r, i) {
     // sound follows the player's choice (welcome card / sound pill = settings.sound); falls back to muted if refused
     vid.defaultMuted = true; vid.setAttribute("muted", ""); vid.muted = !settings.sound; vid.loop = true; vid.playsInline = true; vid.autoplay = true;
     if (r.poster) vid.poster = r.poster; else vid.removeAttribute("poster");
-    vid.setAttribute("aria-label", `${whereQ(state.puzzle)} Round ${i + 1} video`);
+    vid.setAttribute("aria-label", `Round ${i + 1} video. ${whereQ()}.`);
     $("#media").style.setProperty("--media-bg", r.poster ? `url("${r.poster}")` : "none");
     vid.onloadedmetadata = fitMedia;
     vid.onplaying = () => { VS.lastAt = Date.now(); vidOverlay("playing"); };
@@ -572,7 +585,7 @@ function showMedia(r, i) {
     clearInterval(VS.timer); vidOverlay("idle");
     vid.onerror = vid.onplaying = vid.onwaiting = null;
     if (!vid.paused) vid.pause(); vid.removeAttribute("src"); vid.removeAttribute("poster"); vid.load();
-    img.classList.add("loading"); img.onload = () => { img.classList.remove("loading"); fitMedia(); }; img.src = r.img; img.alt = `${whereQ(state.puzzle)} Round ${i + 1} photo`;
+    img.classList.add("loading"); img.onload = () => { img.classList.remove("loading"); fitMedia(); }; img.src = r.img; img.alt = `Round ${i + 1} photo. ${whereQ()}.`;
     $("#media").style.setProperty("--media-bg", `url("${r.img}")`);   // blurred fill behind the contain-fit photo
   }
   setTimeout(() => preloadNext(i), 1200);
@@ -613,6 +626,8 @@ function submitGuess() {
   g.rounds.push({ lat: +state.pin.lat.toFixed(5), lng: +state.pin.lng.toFixed(5), dist: +dist.toFixed(3), pts });
   if (g.rounds.length === CONFIG.rounds) {
     g.done = true; g.total = totalOf(g); g.emoji = g.rounds.map(x => band(x.dist)[1]).join("");
+    // won = a perfect day or all greens (every pin under 100 km; a full-score pin is inside that).
+    if (!isPreview()) track("game_completed", { won: g.rounds.every(x => band(x.dist)[1] === "🟩"), guesses: g.rounds.length });
     if (isToday()) recordStats(g);
     if (!isPreview()) CommunityStats.submit({ puzzleId: p.id, day: state.dateKey, mode: state.mode, total: g.total, rounds: g.rounds }).catch(() => {});
   }
@@ -628,7 +643,7 @@ function revealRound(i, animate) {
   const perfect = $("#rvPerfect"); perfect.textContent = `Perfect! within ${CONFIG.fullScoreRadiusKm} km`; perfect.classList.toggle("hidden", !isPerfect(gr.dist));
   $("#rvPlace").textContent = `📍 ${r.place}${r.country ? ", " + r.country : ""}`;
   $("#rvFact").innerHTML = r.fact ? `<b>Fun fact:</b> ${esc(r.fact)}` : "";
-  // Featured days: no handle / IG link until the Meet her card after round 5
+  // Featured days: no handle / IG link until the traveler card after round 5
   $("#credit").innerHTML = $("#rvCredit").innerHTML = state.puzzle.featured
     ? `${r.media === "video" ? "Video" : "Photo"} used with permission · <span class="who-hint">${esc(whoHint(state.puzzle))}</span>` : creditHtml(r);
   $("#mapHint").classList.add("gone");
@@ -656,7 +671,7 @@ function showInterstitial(done) {
 }
 
 // ================================================================ results
-function titleFor(t) { const f = t / maxTotal(); return f >= .9 ? "World-class tracker 🌍" : f >= .7 ? "Great eye! 👀" : f >= .45 ? "Solid trip ✈️" : f >= .2 ? "Scenic route 🗺️" : "Lost in transit 😅"; }
+function titleFor(t) { const f = t / maxTotal(); return f >= .9 ? "Pin-perfect 🌍" : f >= .7 ? "Great eye! 👀" : f >= .45 ? "Solid trip ✈️" : f >= .2 ? "Scenic route 🗺️" : "Lost in transit 😅"; }
 function showResults(scroll) {
   const p = state.puzzle, g = state.game, t = totalOf(g);
   setDock("mini"); $("#stage").classList.add("hidden");   // results replace the play area
@@ -682,14 +697,14 @@ function meetAvatar(f) {
 function renderMeetHer(p) {
   const box = $("#meetHer"), f = p.featured, w = W(p);
   if (f) {
-    box.innerHTML = `<div class="mh-k">Meet ${w.obj}</div><div class="mh-row">${meetAvatar(f)}
+    box.innerHTML = `<div class="mh-k">Today's traveler</div><div class="mh-row">${meetAvatar(f)}
       <div><div class="mh-name">${esc(f.name || "@" + f.handle)}</div><div class="mh-handle">@${esc(f.handle)}</div></div>
       <a class="pill-btn primary mh-btn" id="meetHerLink" href="${esc(f.igUrl)}" target="_blank" rel="noopener">Instagram ↗</a></div>
       <p class="mh-note">Featured with ${w.subj === "she" ? "her" : w.subj === "he" ? "his" : "their"} consent${f.consentOn ? ` (opted in ${esc(f.consentOn)})` : ""}. We never pin a home address.</p>`;
     const img = box.querySelector(".mh-av img");
     if (img) img.onerror = () => { const slot = img.parentElement; if (!slot) return; slot.classList.remove("has-photo"); slot.textContent = img.dataset.fallback || ""; };
   } else {
-    box.innerHTML = `<div class="mh-k">Meet ${w.obj}</div><p class="mh-note">No featured ${w.noun} is linked to this day.</p><a class="link-btn" href="#optin">Want to be featured? Opt in →</a>`;
+    box.innerHTML = `<div class="mh-k">Today's traveler</div><p class="mh-note">No traveler is linked to this day.</p><a class="link-btn" href="#optin">Want to be featured? Opt in →</a>`;
   }
 }
 function drawSummary(p, g) {
@@ -736,13 +751,13 @@ function currentStreak() { const s = load(LS.stats, null); if (!s) return 0; con
 // ================================================================ sharing
 function shareUrl() { return CONFIG.siteUrl.replace(/#.*$/, "") + linkHash(); }
 function shareTitle() { return `${CONFIG.brand} #${pad3(dayNumber(state.dateKey) + 1)}`; }
-function challengeText() { return `${shareTitle()} 📍\nFive photos. One ${W(state.puzzle).noun}. ${whereQ(state.puzzle).replace("Where ", "Where in the world ")}\n${shareUrl()}`; }
+function challengeText() { return `${shareTitle()} 📍\nFive travel photos. Where in the world were they taken?\n${shareUrl()}`; }
 function resultText() {
   const g = getResult(); if (!g || !g.done) return "";
   return `${shareTitle()} 📍 ${n0(totalOf(g))}/${n0(maxTotal())}\n${g.rounds.map(x => band(x.dist)[1]).join("")}\n${shareUrl()}`;
 }
 async function doShare(text) {
-  if (!text) return; window.__lastShare = text;
+  if (!text) return; track("share_clicked"); window.__lastShare = text;
   if (navigator.share && matchMedia("(pointer:coarse)").matches) { try { await navigator.share({ text }); return; } catch (e) { if (e.name === "AbortError") return; } }
   try { await navigator.clipboard.writeText(text); toast("Copied to clipboard!"); }
   catch { const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
@@ -775,7 +790,7 @@ function goLegacyPuzzle(id) {
   for (let n = dayNumber(todayKey()); n >= 0; n--) { const k = keyFromDay(n), p = puzzleForDate(k); if (p && p.id === id) return goDate(k); }
   goToday();
 }
-const whoHint = p => `Who ${W(p).subj === "they" ? "are" : "is"} ${W(p).subj}? Find out after the game.`;   // in-game reminder (handle only on the Meet card)
+const whoHint = () => "Name and profile appear after the last round.";   // in-game reminder (handle only on the traveler card)
 const dayLabel = p => p.featured ? `Featured day · ${whoHint(p)}` : "Custom day";
 function goArchive() {
   showView("archive"); setHash("#archive");
@@ -858,7 +873,7 @@ function menuModal() {
     <button id="mArchive">🗓 Archive<small>Every past daily</small></button>
     ${accountsOn() ? `<button id="mAccount">${Cloud.user ? "👤 Your account" : "👤 Sign in"}<small>${Cloud.user ? esc(Cloud.user.email || "") : "Optional: sync stats across devices"}</small></button>` : ""}
     ${premiumOn() ? `<button id="mPremium">⭐ ${isPremium() ? "Premium" : "Go Premium"}<small>${isPremium() ? "No ads · priority review" : "No ads + priority review for submissions"}</small></button>` : ""}
-    <button id="mOptin">💌 Feature me<small>${submissionsOn() ? "Submit your own photos to be featured" : 'Opt in to be a future "She"'}</small></button>
+    <button id="mOptin">📷 Feature me<small>${submissionsOn() ? "Submit your own travel photos to be featured" : "Opt in to be featured in a future puzzle"}</small></button>
     <button id="mSettings">⚙️ Settings<small>Theme, load a puzzle file</small></button>
     <button id="mHow">❓ How to play</button>
     <button id="mAbout">📚 About &amp; photo credits</button>
@@ -878,8 +893,7 @@ function countVisit() {   // one per browser session (reloads in the same tab do
 }
 const welcomeDone = () => !!load(LS.welcome, null);
 function showWelcome() {
-  const p = state.puzzle || ALL[0], sj = W(p).subj;
-  $("#welSub").innerHTML = `Every day, 5 photos and clips of someone somewhere on Earth.<br>Look for clues and guess where ${esc(sj)} ${sj === "they" ? "are" : "is"}!`;
+  $("#welSub").innerHTML = `Every day, 5 photos and clips from one trip somewhere on Earth.<br>Look for clues and guess where each one was taken.`;
   $("#welcome").classList.remove("hidden"); document.body.classList.add("welcome-open"); setTimeout(() => $("#welSoundOn").focus(), 50);
 }
 function chooseSound(choice) {   // a click = user gesture, so unmuted playback of the first clip is allowed right here
@@ -916,7 +930,7 @@ function renderCrossPromo() {
   const el = $("#crossPromo"); if (!el) return;
   if (crossPromoCheck() !== "show") { el.classList.add("hidden"); return; }
   const c = promoCfg(), go = $("#crossPromoGo");
-  $("#crossPromoTitle").textContent = c.title || "Like WhereIsShe?";
+  $("#crossPromoTitle").textContent = c.title || "From the same creator";
   $("#crossPromoBody").textContent = c.blurb || "";
   go.href = promoUrl(c.url); go.target = "_blank"; go.rel = "noopener"; go.textContent = c.cta || "Play Ranki →";
   $("#crossPromoDismiss").textContent = c.dismiss || "Not now";
@@ -958,14 +972,14 @@ function settingsModal() {
 function howModal() {
   openModal(`<h2>How to play</h2>
    <p>Every day there are <b>5 photos</b> of the same person somewhere in the world. For each one, tap the map to drop your pin, then hit <b>Guess</b>.</p>
-   <p>You'll see where they really were, how far off you were, and your points: up to <b>5,000</b> per round, so <b>25,000</b> max. Anywhere within <b>${CONFIG.fullScoreRadiusKm} km</b> of the real spot is a perfect 5,000; further out, the closer you are the more you score.</p>
+   <p>You'll see the real place, how far off you were, and your points: up to <b>5,000</b> per round, so <b>25,000</b> max. Anywhere within <b>${CONFIG.fullScoreRadiusKm} km</b> of the real spot is a perfect 5,000; further out, the closer you are the more you score.</p>
    <p>🟩 under 100 km · 🟨 under 500 km · 🟧 under 2,000 km · 🟥 further.</p>
    <p>Everyone featured has opted in. We never pin a home address.</p>
    <p>A new daily drops at local midnight. Missed one? It's in the Archive.</p>`);
 }
 function aboutModal() {
   // no per-round credits here: they would spoil the answers and name the featured woman before round 5
-  openModal(`<h2>About &amp; credits</h2><p style="color:var(--muted);font-size:14px">WhereIsShe is a prototype. Every day features someone who opted in; their photos are used with their permission, and they're credited (with a link to their Instagram) on the Meet card after round 5.</p>
+  openModal(`<h2>About &amp; credits</h2><p style="color:var(--muted);font-size:14px">WhereIsShe is a prototype. Every day features someone who opted in; their photos are used with their permission, and they're credited (with a link to their Instagram) on the traveler card after round 5.</p>
     <p style="font-size:13px"><a href="about.html" target="_blank" rel="noopener">About</a> · <a href="how-to-play.html" target="_blank" rel="noopener">How to play</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a> · <a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="refund.html" target="_blank" rel="noopener">Refunds</a></p>
     <p style="font-size:12px;color:var(--muted)">Map data © OpenStreetMap contributors · Basemap: OpenFreeMap / OpenMapTiles (fallback: Esri). Rendering: MapLibre GL JS (BSD-3-Clause). Map library: Leaflet (BSD-2-Clause).</p>`);
 }
