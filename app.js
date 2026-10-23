@@ -108,13 +108,16 @@ const fmtKm = km => km < 1 ? `${Math.round(km * 1000)} m` : km < 10 ? `${km.toFi
 // ================================================================ data (mirrors build.py)
 // One row per round. Puzzle-level fields (daily_order, set, placeholder, featured_*, consent_on) are read from the
 // first row of each puzzle_id that has them. See README "Data format".
-const COLS = ["puzzle_id","daily_order","round","set","placeholder","featured_name","featured_handle","featured_ig_url","featured_pronoun","consent_on",
+const COLS = ["puzzle_id","daily_order","round","set","placeholder","featured_name","featured_handle","featured_ig_url","featured_avatar","featured_pronoun","consent_on",
   "media_type","image_url","video_url","poster_url","lat","lng","place_name","country","fun_fact","photo_date","credit","license","license_url","source_url","focus","focus_mobile","in_frame"];
 const str = v => { v = String(v ?? "").trim(); return v.endsWith(".0") ? v.slice(0, -2) : v; };
 const num = v => { const n = parseFloat(String(v ?? "").replace(/,/g, "")); return isFinite(n) ? n : null; };
 const yes = v => v === true || ["yes", "y", "true", "1"].includes(str(v).toLowerCase());
 const lowerKeys = r => { const o = {}; for (const k in r) o[String(k).trim().toLowerCase()] = r[k]; return o; };
 const handleOf = h => str(h).replace(/^@/, "");
+// Optional Meet-card photo. A site-relative file (sources/<set>/avatar.jpg) or an https URL. Anything else is ignored.
+const avatarOf = v => { const s = str(v); if (!s || /[\s"'<>]/.test(s) || s.includes("..")) return "";
+  return /^https:\/\//i.test(s) || /^[A-Za-z0-9_./-]+$/.test(s) ? s : ""; };
 // per-day wording: featured_pronoun "she" (default) or "he" (anything else falls back to "they")
 const PRONOUNS = { she: { subj: "she", obj: "her", noun: "woman" }, he: { subj: "he", obj: "him", noun: "man" }, they: { subj: "they", obj: "them", noun: "person" } };
 const pronounOf = v => { v = str(v).toLowerCase(); return v === "he" || v === "him" ? "he" : v === "they" || v === "them" ? "they" : "she"; };
@@ -138,8 +141,8 @@ function parseRows(rows) {
     if (yes(r.placeholder)) p.placeholder = true;
     if (!p.featured && handleOf(r.featured_handle)) {
       const h = handleOf(r.featured_handle);
-      p.featured = { name: str(r.featured_name), handle: h, igUrl: str(r.featured_ig_url) || `https://www.instagram.com/${encodeURIComponent(h)}/`, consentOn: str(r.consent_on), pronoun: pronounOf(r.featured_pronoun) };
-    }
+      p.featured = { name: str(r.featured_name), handle: h, igUrl: str(r.featured_ig_url) || `https://www.instagram.com/${encodeURIComponent(h)}/`, avatar: avatarOf(r.featured_avatar), consentOn: str(r.consent_on), pronoun: pronounOf(r.featured_pronoun) };
+    } else if (p.featured && !p.featured.avatar) { const a = avatarOf(r.featured_avatar); if (a) p.featured.avatar = a; }
     const lat = num(r.lat), lng = num(r.lng), media = str(r.media_type).toLowerCase() === "video" ? "video" : "image";
     if (lat == null || lng == null || (media === "video" ? !str(r.video_url) : !str(r.image_url))) return;
     p.rounds.push({ n: num(r.round) ?? p.rounds.length + 1, media, img: str(r.image_url), video: str(r.video_url), poster: str(r.poster_url), lat, lng, place: str(r.place_name), country: str(r.country),
@@ -577,13 +580,20 @@ function showResults(scroll) {
   drawSummary(p, g);
   if (scroll) setTimeout(() => $("#result").scrollIntoView({ behavior: "smooth", block: "start" }), 80);
 }
+function meetAvatar(f) {
+  const initial = esc((f.name || f.handle || "?").slice(0, 1).toUpperCase());
+  if (!f.avatar) return `<div class="mh-av">${initial}</div>`;
+  return `<div class="mh-av has-photo"><img alt="" src="${esc(f.avatar)}" data-fallback="${initial}"></div>`;
+}
 function renderMeetHer(p) {
   const box = $("#meetHer"), f = p.featured, w = W(p);
   if (f) {
-    box.innerHTML = `<div class="mh-k">Meet ${w.obj}</div><div class="mh-row"><div class="mh-av">${esc((f.name || f.handle).slice(0, 1).toUpperCase())}</div>
+    box.innerHTML = `<div class="mh-k">Meet ${w.obj}</div><div class="mh-row">${meetAvatar(f)}
       <div><div class="mh-name">${esc(f.name || "@" + f.handle)}</div><div class="mh-handle">@${esc(f.handle)}</div></div>
       <a class="pill-btn primary mh-btn" id="meetHerLink" href="${esc(f.igUrl)}" target="_blank" rel="noopener">Instagram ↗</a></div>
       <p class="mh-note">Featured with ${w.subj === "she" ? "her" : w.subj === "he" ? "his" : "their"} consent${f.consentOn ? ` (opted in ${esc(f.consentOn)})` : ""}. We never pin a home address.</p>`;
+    const img = box.querySelector(".mh-av img");
+    if (img) img.onerror = () => { const slot = img.parentElement; if (!slot) return; slot.classList.remove("has-photo"); slot.textContent = img.dataset.fallback || ""; };
   } else {
     box.innerHTML = `<div class="mh-k">Meet ${w.obj}</div><p class="mh-note">No featured ${w.noun} is linked to this day.</p><a class="link-btn" href="#optin">Want to be featured? Opt in →</a>`;
   }
