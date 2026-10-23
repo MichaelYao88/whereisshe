@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
 <title>Loading Zone · WhereIsShe</title>
 <script>
   (function(){try{var t=JSON.parse(localStorage.getItem("wis.settings.v1")||"{}").theme||"dark";
@@ -24,8 +25,6 @@ body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 Helvetica,"Hel
 main{max-width:920px;margin:0 auto;padding:10px 12px 40px}
 .hidden{display:none!important}
 .note{color:var(--muted);font-size:13px;margin:4px 2px 10px}
-.tools{display:flex;gap:12px;align-items:center;margin:0 2px 10px;font-size:13px;color:var(--muted)}
-.tools input{accent-color:var(--brand)}
 .days,.sets{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
 .day{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 10px}
 .day.today{outline:2px solid var(--today)}
@@ -40,18 +39,25 @@ main{max-width:920px;margin:0 auto;padding:10px 12px 40px}
 .tag.ok{color:var(--ok);border-color:currentColor}
 .tag.warn{color:var(--warn);border-color:currentColor}
 .play{flex:none;text-decoration:none;font-weight:800;font-size:13.5px;color:#fff;background:var(--brand);border-radius:999px;padding:7px 13px}
-.play.disabled{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:600;white-space:normal;max-width:200px;text-align:right}
-.set{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
-.set-top{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
-.set-top b{font-size:15px}
-.set-top small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
-.thumbs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:8px}
+.play.disabled{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:600}
+.set{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.set>button{all:unset;box-sizing:border-box;width:100%;display:flex;gap:10px;align-items:center;padding:10px 12px;cursor:pointer}
+.set>button:focus-visible{outline:2px solid var(--brand)}
+.s-main{flex:1;min-width:0}
+.s-main b{display:block;font-size:14.5px}
+.s-main small{display:block;color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.s-nums{flex:none;text-align:right;font-size:12px;color:var(--muted);line-height:1.3}
+.s-nums b{color:var(--ink)}
+.s-body{border-top:1px solid var(--line);padding:8px 12px 12px;font-size:13px}
+.rounds{margin:8px 0 0;padding:0;list-style:none}
+.rounds li{padding:3px 0;border-bottom:1px solid var(--line);color:var(--muted)}
+.rounds b{color:var(--ink)}
+.thumbs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
 .th{position:relative;border-radius:8px;overflow:hidden;background:var(--thumb)}
 .th img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;background:var(--thumb)}
 .th .rn{position:absolute;left:4px;top:4px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;font-weight:800;padding:1px 5px;border-radius:999px}
 .th .vid{position:absolute;right:4px;top:4px;background:#fff;color:#111;font-size:10px;font-weight:800;padding:1px 5px;border-radius:999px}
-.th .pl{display:none;padding:4px 6px;font-size:10.5px;line-height:1.25;font-weight:700;color:#fff;background:#111}
-body.answers .th .pl{display:block}
+.th .pl{padding:4px 6px;font-size:10.5px;line-height:1.25;font-weight:700;color:#fff;background:#111}
 @media (max-width:560px){.d-when{width:72px}.play{padding:6px 10px}}
 </style>
 </head>
@@ -72,7 +78,6 @@ body.answers .th .pl{display:block}
   </section>
   <section id="dataView" class="hidden">
     <p class="note" id="dsNote"></p>
-    <label class="tools"><input type="checkbox" id="answers"> Show places on the thumbs</label>
     <ul class="sets" id="sets"></ul>
   </section>
 </main>
@@ -135,12 +140,17 @@ for (let t = utc(epoch); t <= utc(end); t += 864e5) {
 }
 $("#pvNote").textContent = `${days.length} scheduled days, ${fmtDate(days[0] ? days[0].key : epoch)} to ${fmtDate(days.length ? days[days.length - 1].key : end)}. The rotation keeps going after this window. Play does not touch stats or streaks. Old schedule.html links land here.`;
 $("#days").innerHTML = days.map(({ key, no, pid, how, rs }) => {
-  const f = featured(rs), videos = rs.filter(r => r.media_type === "video").length;
+  const f = featured(rs), videos = rs.filter(r => r.media_type === "video");
+  const w = warnings(pid, rs), exc = (S.exceptions || {})[pid];
   const when = key < today ? "past" : key === today ? "today" : "future";
+  const tags = [`<span class="tag">${how}</span>`, `<span class="tag">${rs.length} rounds</span>`,
+    `<span class="tag">${videos.length ? "video " + videos.map(r => r.round).join(" · ") : "no video"}</span>`,
+    exc ? `<span class="tag" title="${esc(exc)}">1-video exception</span>` : "",
+    w.map(x => `<span class="tag warn">${esc(x)}</span>`).join("")].join("");
   return `<li class="day ${when}" data-id="${esc(pid)}" data-key="${key}">
     <div class="d-when"><b>#${pad3(no)}</b>${esc(fmtDate(key))}${key === today ? "<br><b>Today</b>" : ""}</div>
-    <div class="d-main"><h2>${esc(pid)}</h2><p>${whoLine(f)} · ${videos} video${videos === 1 ? "" : "s"}</p>
-      <div class="tags"><span class="tag">${how}</span></div></div>
+    <div class="d-main"><h2>${esc(pid)}</h2><p>${whoLine(f)}</p>
+      <div class="tags">${tags}</div></div>
     <a class="play" href="index.html?preview=${key}">Play</a></li>`;
 }).join("");
 
@@ -148,24 +158,41 @@ const ids = Object.keys(by).sort((a, b) => {
   const ord = id => { const ns = by[id].map(r => +r.daily_order).filter(n => n > 0); return ns.length ? Math.min(...ns) : 1e9; };
   return ord(a) - ord(b) || a.localeCompare(b);
 });
-$("#dsNote").textContent = `${ids.length} puzzles in this build. Thumbs, who is featured, validation, and whether each one is pinned, in the rotation, or unused. A puzzle with no scheduled date cannot be previewed.`;
-$("#sets").innerHTML = ids.map(pid => {
-  const rs = by[pid], f = featured(rs), videos = rs.filter(r => r.media_type === "video").length;
-  const w = warnings(pid, rs), exc = (S.exceptions || {})[pid];
-  const pinned = isPinned(pid), rot = inRotation(pid);
-  const when = playOn(pid, today) || playOn(pid, epoch);
+const used = {}; days.forEach(d => { used[d.pid] = (used[d.pid] || 0) + 1; });
+const vault = ids.map(pid => {
+  const rs = by[pid];
+  return { pid, rs, when: playOn(pid, today) || playOn(pid, epoch), used: used[pid] || 0 };
+});
+$("#dsNote").textContent = `${ids.length} puzzles in this build. Tap one for its rounds and places. “Used” counts this schedule window; a rotation puzzle keeps repeating after it. Nothing here is linked from the public game.`;
+$("#sets").innerHTML = vault.map((v, i) => {
+  const f = featured(v.rs), videos = v.rs.filter(r => r.media_type === "video").length;
+  const w = warnings(v.pid, v.rs), exc = (S.exceptions || {})[v.pid];
+  const pinned = isPinned(v.pid), rot = inRotation(v.pid);
   const tags = [
     pinned ? `<span class="tag">pinned</span>` : "",
     rot ? `<span class="tag">in rotation</span>` : "",
     !pinned && !rot ? `<span class="tag warn">unused</span>` : "",
     w.length ? w.map(x => `<span class="tag warn">${esc(x)}</span>`).join("") : `<span class="tag ok">ok</span>`,
-    exc ? `<span class="tag" title="${esc(exc)}">1 video exception</span>` : ""
+    exc ? `<span class="tag" title="${esc(exc)}">1-video exception</span>` : ""
   ].join("");
-  const play = when
-    ? `<a class="play" href="index.html?preview=${when}">Play</a>`
-    : `<span class="play disabled">No scheduled date to preview</span>`;
-  return `<li class="set" data-id="${esc(pid)}"><div class="set-top"><div><b>${esc(pid)}</b><small>${whoLine(f)} · ${videos} video${videos === 1 ? "" : "s"}</small><div class="tags">${tags}</div></div>${play}</div><div class="thumbs">${thumbs(rs)}</div></li>`;
+  return `<li class="set" data-id="${esc(v.pid)}"><button aria-expanded="false" data-i="${i}">
+    <span class="s-main"><b>${esc(v.pid)}</b><small>${whoLine(f)}</small><span class="tags">${tags}</span></span>
+    <span class="s-nums"><b>${v.rs.length}</b> rounds<br>${videos} video${videos === 1 ? "" : "s"} · used <b>${v.used}</b>×</span>
+  </button></li>`;
 }).join("");
+const detail = v => {
+  const play = v.when ? `<p><a class="play" href="index.html?preview=${v.when}">Play · ${esc(fmtDate(v.when))}</a></p>` : `<p class="play disabled">No scheduled date to preview. Pin it or add it to the rotation.</p>`;
+  const lines = v.rs.map(r => `<li><b>Round ${esc(r.round)}</b> · ${r.media_type === "video" ? "video" : "photo"} · ${esc(r.place_name || "—")}${r.country ? ", " + esc(r.country) : ""}</li>`).join("");
+  return `${play}<div class="thumbs">${thumbs(v.rs)}</div><ol class="rounds">${lines}</ol>`;
+};
+$("#sets").addEventListener("click", e => {
+  const b = e.target.closest("button[data-i]"); if (!b) return;
+  const li = b.parentElement, open = b.getAttribute("aria-expanded") === "true";
+  b.setAttribute("aria-expanded", String(!open));
+  const body = li.querySelector(".s-body");
+  if (open) { body && body.remove(); return; }
+  li.insertAdjacentHTML("beforeend", `<div class="s-body">${detail(vault[+b.dataset.i])}</div>`);
+});
 
 const tab = v => {
   $("#tabPreview").setAttribute("aria-selected", String(v === "preview"));
@@ -176,7 +203,6 @@ const tab = v => {
 };
 $("#tabPreview").onclick = () => tab("preview");
 $("#tabData").onclick = () => tab("data");
-$("#answers").onchange = e => document.body.classList.toggle("answers", e.target.checked);
 tab(location.hash === "#data" ? "data" : "preview");
 const todayRow = document.querySelector(".day.today");
 if (todayRow && location.hash !== "#data") todayRow.scrollIntoView({ block: "center" });
