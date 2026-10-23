@@ -16,9 +16,17 @@ const CONFIG = {
   maxRoundScore: 5000,
   scoreScaleKm: 1492.7,              // decay beyond the radius: 5000 * e^(-(km - radius) / 1492.7)
   fullScoreRadiusKm: 30,
-  // Future "try our other ranking game" card on a later visit. DISABLED: never shown to players while enabled is false.
-  // To launch: set enabled: true + url (+ title/blurb). Shows once, on visit >= minVisit, never in preview mode or on the first visit.
-  crossPromo: { enabled: false, url: "", title: "Rankd", blurb: "Our other game: rank things, see how your picks compare.", minVisit: 2 },
+  // Ranki card on the daily results screen, after the share buttons. Not an ad: free and Premium both see it,
+  // and it is separate from interstitialBeforeResults. Shows when stats.played >= minPlayed OR the current
+  // streak >= minStreak. Once per tab session. "Not now" snoozes snoozeDays via LS.promo. Opening Ranki
+  // (clickedAt) stops it. Never in preview, archive, or on Loading Zone (that page does not load this app).
+  crossPromo: {
+    enabled: true, url: "https://ranki.gg",
+    title: "Like WhereIsShe?",
+    blurb: "Try the creator’s other game — Ranki: a daily ranking puzzle.",
+    cta: "Play Ranki →", dismiss: "Not now",
+    minPlayed: 5, minStreak: 3, snoozeDays: 7,
+  },
   videoRetries: 2,                   // automatic reloads of a clip after an error or a stall
   videoStallMs: 8000,                // no playback progress for this long while loading = stalled -> retry             // within this many km of the answer = full 5000 ("Perfect!")
   interstitialBeforeResults: true,   // ALWAYS show the ad after guess 5, before the results screen (daily too)
@@ -590,6 +598,7 @@ function showResults(scroll) {
   renderMeetHer(p);
   $("#nextBtn").textContent = state.mode === "archive" ? "Back to archive →" : isPreview() ? "Back to loading zone →" : "Play past days →";
   renderCommunity(p, t);
+  renderCrossPromo();   // daily results only; the pre-results interstitial is a separate step and already finished
   $("#result").classList.remove("hidden");
   drawSummary(p, g);
   if (scroll) setTimeout(() => $("#result").scrollIntoView({ behavior: "smooth", block: "start" }), 80);
@@ -782,7 +791,7 @@ function menuModal() {
 }
 // "Clear my game data": confirm, then drop every WhereIsShe key from this browser (the marking tool's wis.mark.* is a
 // separate page and is kept), and reload from a clean URL so the app starts fresh on today's daily.
-// ---- v10 first-visit welcome card (sound default) + future cross-promo (disabled by CONFIG.crossPromo.enabled)
+// ---- v10 first-visit welcome card (sound default). Ranki cross-promo is renderCrossPromo() on daily results.
 function countVisit() {   // one per browser session (reloads in the same tab don't count)
   try { if (sessionStorage.getItem("wis.visitCounted")) return load(LS.visits, 0); sessionStorage.setItem("wis.visitCounted", "1"); } catch {}
   const n = (+load(LS.visits, 0) || 0) + 1; save(LS.visits, n); return n;
@@ -799,24 +808,48 @@ function chooseSound(choice) {   // a click = user gesture, so unmuted playback 
   const v = $("#video");
   if (!v.classList.contains("hidden")) { v.muted = !settings.sound; setMuteLabel(); pulseMute(); vidPlay(); }
 }
-const promoCfg = () => Object.assign({}, CONFIG.crossPromo, window.__WIS_PROMO_TEST__ || {});   // test override only
-function crossPromoCheck() {   // why the cross-promo would or wouldn't show (test hook)
+// wis.promo.v1: { clickedAt } never again, { dismissedAt, dismissUntil } is the "Not now" snooze.
+// A legacy { at } stamp from the unshipped visit modal is ignored. Once per tab: sessionStorage wis.promo.session.
+const PROMO_SESSION = "wis.promo.session";
+const promoCfg = () => Object.assign({}, CONFIG.crossPromo, window.__WIS_PROMO_TEST__ || {});   // devtools override only; unset in production
+function promoRecord() { const v = load(LS.promo, null); return v && typeof v === "object" && !Array.isArray(v) ? v : {}; }
+function promoUrl(url) { try { const u = new URL(url, location.href); if (u.protocol === "https:" || u.protocol === "http:") return u.href; } catch {} return ""; }
+function promoNum(v, d) { return Number.isFinite(+v) ? +v : d; }
+function promoSessionSeen() { try { return sessionStorage.getItem(PROMO_SESSION) === "1"; } catch { return false; } }
+function markPromoSession() { try { sessionStorage.setItem(PROMO_SESSION, "1"); } catch {} }
+function crossPromoCheck() {   // why the results card would or wouldn't show on the next render (test hook)
   const c = promoCfg();
   if (!c.enabled) return "disabled";
-  if (!c.url) return "no url";
-  if (isPreview()) return "preview";
-  if (!welcomeDone()) return "first visit";
-  if (load(LS.promo, null)) return "already shown";
-  if ((+load(LS.visits, 0) || 0) < (c.minVisit || 2)) return "too early";
+  if (!promoUrl(c.url)) return "no url";
+  if (isPreview()) return "preview";                 // ?preview= and the Loading Zone Play sandbox
+  if (!isToday()) return "not daily";                // archive, and Practice if it ever returns
+  if (!state.game || !state.game.done) return "not finished";
+  const played = +(load(LS.stats, null) || {}).played || 0;
+  if (played < promoNum(c.minPlayed, 5) && currentStreak() < promoNum(c.minStreak, 3)) return "threshold";
+  const rec = promoRecord();
+  if (rec.clickedAt) return "clicked";
+  if (rec.dismissUntil && Date.now() < +rec.dismissUntil) return "snoozed";
+  if (promoSessionSeen()) return "session";
   return "show";
 }
-function maybeCrossPromo() {
-  if (crossPromoCheck() !== "show") return;
-  const c = promoCfg(); save(LS.promo, { at: Date.now() });
-  openModal(`<div class="promo"><div class="promo-emoji">🏆</div><h2>Try ${esc(c.title)}</h2><p>${esc(c.blurb || "")}</p>
-    <a class="pill-btn primary" id="promoGo" href="${esc(c.url)}" target="_blank" rel="noopener">Play ${esc(c.title)} →</a>
-    <button class="link-btn" id="promoLater">Not now</button></div>`);
-  $("#promoLater").onclick = closeModal;
+function renderCrossPromo() {
+  const el = $("#crossPromo"); if (!el) return;
+  if (crossPromoCheck() !== "show") { el.classList.add("hidden"); return; }
+  const c = promoCfg(), go = $("#crossPromoGo");
+  $("#crossPromoTitle").textContent = c.title || "Like WhereIsShe?";
+  $("#crossPromoBody").textContent = c.blurb || "";
+  go.href = promoUrl(c.url); go.target = "_blank"; go.rel = "noopener"; go.textContent = c.cta || "Play Ranki →";
+  $("#crossPromoDismiss").textContent = c.dismiss || "Not now";
+  el.classList.remove("hidden"); markPromoSession();
+}
+function onCrossPromoGo() {   // they already went: don't nag again, including a middle-click
+  save(LS.promo, { ...promoRecord(), clickedAt: Date.now() }); markPromoSession();
+  const el = $("#crossPromo"); if (el) el.classList.add("hidden");
+}
+function onCrossPromoDismiss() {
+  const days = promoNum(promoCfg().snoozeDays, 7), now = Date.now();
+  save(LS.promo, { ...promoRecord(), dismissedAt: now, dismissUntil: now + days * 864e5 });
+  markPromoSession(); $("#crossPromo").classList.add("hidden");
 }
 function wisKeys(store) { const out = []; try { for (let i = 0; i < store.length; i++) { const k = store.key(i); if (k && k.startsWith("wis.") && !k.startsWith("wis.mark.")) out.push(k); } } catch {} return out; }
 function clearGameData() {
@@ -1286,6 +1319,8 @@ window.WIS = { videoState: () => ({ state: VS.state, tries: VS.tries, round: VS.
 $("#guessBtn").onclick = submitGuess; $("#nextRoundBtn").onclick = nextRound; $("#nextBtn").onclick = next;
 $("#shareResultBtn").onclick = () => doShare(resultText());
 $("#shareChallengeBtn").onclick = $("#shareChallengeTop").onclick = () => doShare(challengeText());
+if ($("#crossPromoGo")) { $("#crossPromoGo").addEventListener("click", onCrossPromoGo); $("#crossPromoGo").addEventListener("auxclick", e => { if (e.button === 1) onCrossPromoGo(); }); }
+if ($("#crossPromoDismiss")) $("#crossPromoDismiss").onclick = onCrossPromoDismiss;
 $("#statsBtn").onclick = statsModal; $("#menuBtn").onclick = menuModal; $("#modalClose").onclick = closeModal;
 $("#themeBtn").onclick = () => { settings.theme = effectiveTheme() === "dark" ? "light" : "dark"; saveSettings(); applyTheme(); };
 $("#modal").addEventListener("click", e => { if (e.target.id === "modal") closeModal(); });
@@ -1338,6 +1373,5 @@ function route() {
 window.addEventListener("hashchange", () => { if (location.hash !== linkHash()) route(); });
 route(); fitStage(); setSoundBtn();
 if (!welcomeDone() && !isPreview() && !location.hash.startsWith("#optin")) showWelcome();
-else setTimeout(maybeCrossPromo, 1500);
 cloudInit();   // v11: no-op unless CONFIG.backend.enabled
 })();
