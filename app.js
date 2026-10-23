@@ -308,7 +308,7 @@ function showRound(i, revealed) {
   const p = state.puzzle, g = state.game, r = p.rounds[i]; g.cur = i; state.pin = null;
   $("#heroKind").textContent = `Round ${i + 1} / ${CONFIG.rounds}`;
   $("#question").textContent = dayTitle(p);   // v10: the day code ("she-001 · No. 001"); name/handle only on the Meet card
-  document.title = `${p.id} · ${CONFIG.brand}`;
+  document.title = `WhereIsShe.gg · ${p.id}`;
   showMedia(r, i);
   $("#phTag") && $("#phTag").classList.toggle("hidden", !p.placeholder);
   if (p.featured) $("#credit").innerHTML = `<span class="who-hint">${esc(whoHint(p))}</span>`;
