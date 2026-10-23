@@ -273,7 +273,6 @@ function drawReveal(guess, ans, animate = true) {
 function renderHero() {
   const p = state.puzzle, n = dayNumber(state.dateKey) + 1;
   $("#heroNo").textContent = `No. ${pad3(n)}`;
-  $("#barCode").textContent = p.id; $("#barNo").textContent = `\u00a0· No. ${pad3(n)}`;
   $("#heroDate").textContent = `${CONFIG.brand} #${pad3(n)} · ${longDate(state.dateKey)}${isToday() ? "" : isPreview() ? " · Preview" : " · Archive"}`;
   let bar = $("#previewBar");
   if (isPreview()) {
@@ -1281,7 +1280,6 @@ $("#clearLink").onclick = e => { e.preventDefault(); clearDataModal(); };
 if (/[?&]cleared=/.test(location.search)) { try { history.replaceState(null, "", location.pathname + location.hash); } catch {} setTimeout(() => toast("Game data cleared"), 300); }
 $("#fileInput").onchange = e => { const f = [...e.target.files]; if (f.length) handleFiles(f); e.target.value = ""; };
 $$(".tab").forEach(b => b.onclick = () => b.dataset.view === "archive" ? goArchive() : goToday());
-$("#barTitle").onclick = e => { e.preventDefault(); goToday(); };
 $("#soundBtn").onclick = () => toggleSound();
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && !$("#welcome").classList.contains("hidden")) { chooseSound("skip"); return; }

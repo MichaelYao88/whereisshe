@@ -28,10 +28,9 @@
 </head>
 <body>
 
-<!-- v11: ONE compact top bar: day-code title · Today / Archive · Settings · account · sound · theme · stats
-     (labels hidden on narrow screens; icons keep aria-labels) -->
+<!-- v11: compact top bar: Today / Archive · Settings · account · sound · theme · stats
+     (labels hidden on narrow screens; icons keep aria-labels). The day code (she-00N) is the play heading, not a nav control. -->
 <header class="topbar" id="topbar">
-  <a class="tb-title" href="#" id="barTitle" aria-label="Today's puzzle"><span class="tb-code" id="barCode">WhereIsShe</span><span class="tb-no" id="barNo"></span></a>
   <nav class="tb-nav" role="tablist" aria-label="Puzzles">
     <button class="tab tb-btn" data-view="today" role="tab" aria-label="Today"><span class="tb-ic" aria-hidden="true">📍</span><span class="tb-lbl">Today</span></button>
     <button class="tab tb-btn" data-view="archive" role="tab" aria-label="Archive"><span class="tb-ic" aria-hidden="true">🗓</span><span class="tb-lbl">Archive</span></button>
