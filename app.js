@@ -37,8 +37,8 @@ const CONFIG = {
   premium: { enabled: true, testMode: true, checkoutUrl: "https://mikelyaps.lemonsqueezy.com/checkout/buy/ca1efbfa-7ab8-4fe6-b96a-694c1f5691fa", price: "From $2.67/month · suggested $6.70", billing: "Monthly subscription · cancel anytime" },   // pay-what-you-want monthly (min $2.67, suggested $6.70)
   // "Feature me" v11 form (links and/or uploads). Login required; limits enforced by the submit_feature() SQL function.
   submissions: { enabled: true, maxFiles: 5, maxFileMB: 25, maxLinks: 10 },
-  // Google AdSense for the post-round-5 unit. Never loaded for Premium players. slot "" = keep the placeholder.
-  ads: { enabled: false, client: "ca-pub-5196178239625142", slot: "" },
+  // Google AdSense Display unit "whereisshe" for the post-round-5 placement. Never requested for Premium players.
+  ads: { enabled: true, client: "ca-pub-5196178239625142", slot: "7982022596" },
 };
 // Tests only (never on the live site): a localhost page may override CONFIG, e.g. to point at the mock backend.
 (function mergeTestConfig(dst, src) { if (!src || !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
