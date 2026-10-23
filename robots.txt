@@ -1,4 +1,7 @@
 User-agent: *
+Allow: /
 Disallow: /mark.html
 Disallow: /mark/
 Disallow: /schedule.html
+
+Sitemap: https://whereisshe.gg/sitemap.xml

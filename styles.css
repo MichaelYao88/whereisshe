@@ -188,6 +188,9 @@ a{color:var(--link)}
 .rrow .rf{grid-column:2/4;font-size:13px;color:var(--muted);line-height:1.4;margin-top:-2px}
 .score-big{font-size:20px;min-width:96px}
 .score-big small{font-size:11px;opacity:.8}
+.result-brand{margin:18px 0 4px;text-align:center;font-weight:700;font-size:clamp(34px,10vw,64px);letter-spacing:-.045em;line-height:.98;color:var(--ink)}
+.result-brand .rb-gg{color:var(--brand)}
+@media (max-width:360px){.result-brand{font-size:30px;letter-spacing:-.05em}}
 .credits{font-size:12.5px;line-height:1.5;color:var(--muted);padding-left:18px}
 .lightbox{cursor:zoom-out;padding:10px}
 .lightbox img{max-width:100%;max-height:100%;border-radius:12px;box-shadow:var(--shadow-card)}

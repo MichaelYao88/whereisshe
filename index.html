@@ -3,16 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>WhereIsShe · A daily where-in-the-world game</title>
-<meta name="description" content="A daily GeoGuessr-style game: five photos of She somewhere in the world. Drop a pin, score up to 25,000.">
+<title>WhereIsShe.gg · A daily where-in-the-world game</title>
+<meta name="description" content="WhereIsShe.gg is a free daily geography game. Five photos or short clips, one world map. Drop a pin and score up to 25,000. A new puzzle every day.">
 <meta name="color-scheme" content="light dark">
 <link rel="canonical" href="https://whereisshe.gg/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="WhereIsShe">
 <meta property="og:url" content="https://whereisshe.gg/">
-<meta property="og:title" content="WhereIsShe · A daily where-in-the-world game">
-<meta property="og:description" content="Five photos, one world map. Drop a pin, score up to 25,000. A new day every day.">
-<meta name="twitter:card" content="summary">
+<meta property="og:title" content="WhereIsShe.gg · A daily where-in-the-world game">
+<meta property="og:description" content="Five photos, one world map. Drop a pin and score up to 25,000. A new WhereIsShe puzzle every day.">
+<meta property="og:image" content="https://whereisshe.gg/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Where Is She . GG, a daily where-in-the-world game">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="WhereIsShe.gg · A daily where-in-the-world game">
+<meta name="twitter:description" content="Five photos, one world map. Drop a pin and score up to 25,000. A new puzzle every day.">
+<meta name="twitter:image" content="https://whereisshe.gg/og.png">
+<meta name="twitter:image:alt" content="Where Is She . GG, a daily where-in-the-world game">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[{"@type":"WebSite","name":"WhereIsShe","alternateName":["Where Is She . GG","WhereIsShe.gg"],"url":"https://whereisshe.gg/"},{"@type":"WebApplication","name":"WhereIsShe","url":"https://whereisshe.gg/","applicationCategory":"GameApplication","operatingSystem":"Web","browserRequirements":"Requires JavaScript","description":"A free daily geography game. Five photos or short clips, one world map. Drop a pin and score up to 25,000. A new puzzle every day.","image":"https://whereisshe.gg/og.png","isAccessibleForFree":true}]}
+</script>
 <script>
   // Apply saved/system theme before first paint (no flash)
   (function(){try{var t=JSON.parse(localStorage.getItem("wis.settings.v1")||"{}").theme||"system";
@@ -114,6 +125,7 @@
           <div class="emoji-row" id="emojiRow"></div>
         </div>
       </div>
+      <p class="result-brand">Where Is She <span class="rb-gg">. GG</span></p>
       <!-- Shown after the interstitial: the day's featured (opted-in) woman, or a generic note -->
       <div class="meet-her" id="meetHer"></div>
       <div class="answer">
