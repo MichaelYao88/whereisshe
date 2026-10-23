@@ -3,6 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+  // PostHog (whereisshe). Autocapture and session replay stay off so typed text is never sent.
+  !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+  posthog.init('phc_BFzhf5CAX9wKcoGBVXnX3uPb4T2LAjeD3ZfBGiHWvFxc', {
+    api_host: 'https://us.i.posthog.com',
+    person_profiles: 'identified_only',
+    autocapture: false,
+    disable_session_recording: true
+  });
+  posthog.register({ site: 'whereisshe' });
+</script>
+
 <title>WhereIsShe.gg · A daily where-in-the-world game</title>
 <meta name="description" content="WhereIsShe.gg is a free daily geography game. Five photos or short clips, one world map. Drop a pin and score up to 25,000. A new puzzle every day.">
 <meta name="color-scheme" content="light dark">
@@ -68,10 +80,10 @@
     <!-- ===== PLAY AREA (GeoGuessr / WhereTaken style): media fills the stage, HUD overlaid, minimap docked bottom-right ===== -->
     <section class="stage" id="stage" aria-label="Round">
       <div class="media" id="media">
-        <img id="photo" alt="Where is she? Round photo" draggable="false">
+        <img id="photo" alt="Round photo. Guess where it was taken." draggable="false">
         <span class="zoom-hint" id="zoomHint">Drag to look around · double-tap to zoom</span>
         <!-- Video rounds (media_type "video"): muted + autoplay + loop + playsinline so it autoplays on iOS/Android -->
-        <video id="video" class="hidden" muted autoplay loop playsinline webkit-playsinline preload="auto" disablepictureinpicture aria-label="Where is she? Round video"></video>
+        <video id="video" class="hidden" muted autoplay loop playsinline webkit-playsinline preload="auto" disablepictureinpicture aria-label="Round video. Guess where it was taken."></video>
         <div class="vid-loading hidden" id="vidLoading" role="status" aria-live="polite"><span class="vl-spin" aria-hidden="true"></span><span class="vl-text">Loading clip…</span><button class="vl-btn hidden" type="button">↻ Retry</button></div>
       </div>
       <div class="hud">
@@ -122,7 +134,7 @@
           <div class="emoji-row" id="emojiRow"></div>
         </div>
       </div>
-      <!-- Shown after the interstitial: the day's featured (opted-in) woman, or a generic note -->
+      <!-- Shown after the interstitial: the day's opted-in traveler, or a generic note -->
       <div class="meet-her" id="meetHer"></div>
       <div class="answer">
         <h3>Your 5 guesses</h3>
@@ -141,8 +153,8 @@
       </div>
       <!-- Ranki cross-promo. Daily results only, after share. Not an ad slot (free and Premium). -->
       <aside class="xpromo hidden" id="crossPromo" aria-labelledby="crossPromoTitle">
-        <p class="xpromo-title" id="crossPromoTitle">Like WhereIsShe?</p>
-        <p class="xpromo-body" id="crossPromoBody">Try the creator’s other game — Ranki: a daily ranking puzzle.</p>
+        <p class="xpromo-title" id="crossPromoTitle">From the same creator</p>
+        <p class="xpromo-body" id="crossPromoBody">Ranki is a separate daily ranking puzzle, not an ad.</p>
         <div class="xpromo-row">
           <a class="pill-btn primary" id="crossPromoGo" href="https://ranki.gg" target="_blank" rel="noopener">Play Ranki →</a>
           <button type="button" class="link-btn" id="crossPromoDismiss">Not now</button>
@@ -155,7 +167,7 @@
   <!-- ======== OPT-IN ("Feature me") VIEW: #optin ======== -->
   <section id="optinView" class="hidden">
     <h2 class="section-title"><span class="hl">Feature me</span></h2>
-    <p class="section-sub" id="optinSub">Want to be a future "She"? Opt in and we'll build a day around your travel photos.</p>
+    <p class="section-sub" id="optinSub">Want your travel photos in a future puzzle? Opt in and we'll build a day around them.</p>
     <form class="optin-form card-box" id="optinForm" novalidate>
       <label>Instagram handle<input name="handle" placeholder="@yourhandle" autocomplete="off" required></label>
       <label>Email<input name="email" type="email" placeholder="you@example.com" autocomplete="email" required>
@@ -225,7 +237,7 @@
      Google Ad Manager interstitial instead. -->
 <div class="overlay hidden" id="interstitial" aria-modal="true" role="dialog">
   <div class="inter-box">
-    <div class="inter-top"><span class="ad-tag">Ad</span><span class="inter-note">Your results are ready</span><button class="skip" id="skipAd" disabled>Skip in 5</button></div>
+    <div class="inter-top"><span class="ad-tag">Ad</span><span class="inter-note">Your score is next, after this ad</span><button class="skip" id="skipAd" disabled>Skip in 5</button></div>
     <div class="inter-fill">
       <!-- ADSENSE: interstitial / large rectangle unit goes here -->
       <div class="inter-ph"><span>Interstitial ad placeholder<br><small>336×280 · full-screen on mobile</small></span></div>
@@ -255,7 +267,7 @@
       <figcaption class="wel-anim-cap">Guess where each photo was taken: drop a pin, score up to 5,000.</figcaption>
     </figure>
     <h2 class="wel-title" id="welTitle">Welcome to WhereIsShe!</h2>
-    <p class="wel-sub" id="welSub">Every day, 5 photos and clips of someone somewhere on Earth.<br>Look for clues and guess where she is!</p>
+    <p class="wel-sub" id="welSub">Every day, 5 photos and clips from one trip somewhere on Earth.<br>Look for clues and guess where each one was taken.</p>
     <p class="wel-note">📶 Clips can take a few seconds to load. If one is slow, wait a moment or tap it.</p>
     <p class="wel-ask">How do you want to play the clips?</p>
     <button class="wel-opt rec" id="welSoundOn" type="button"><span class="wel-badge">Recommended</span><span class="wel-ico" aria-hidden="true">🔊</span><span class="wel-txt"><b>Sound on</b><small>Hear the clips; you can mute any time</small></span></button>
