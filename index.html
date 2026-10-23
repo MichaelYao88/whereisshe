@@ -25,8 +25,8 @@
 {"@context":"https://schema.org","@graph":[{"@type":"WebSite","name":"WhereIsShe","alternateName":["Where Is She . GG","WhereIsShe.gg"],"url":"https://whereisshe.gg/"},{"@type":"WebApplication","name":"WhereIsShe","url":"https://whereisshe.gg/","applicationCategory":"GameApplication","operatingSystem":"Web","browserRequirements":"Requires JavaScript","description":"A free daily geography game. Five photos or short clips, one world map. Drop a pin and score up to 25,000. A new puzzle every day.","image":"https://whereisshe.gg/og.png","isAccessibleForFree":true}]}
 </script>
 <script>
-  // Apply saved/system theme before first paint (no flash)
-  (function(){try{var t=JSON.parse(localStorage.getItem("wis.settings.v1")||"{}").theme||"system";
+  // Apply the saved theme before first paint (no flash). No saved choice defaults to dark.
+  (function(){try{var t=JSON.parse(localStorage.getItem("wis.settings.v1")||"{}").theme||"dark";
   if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t;}catch(e){}})();
 </script>
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=3148c28028">

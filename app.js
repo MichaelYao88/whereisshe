@@ -164,7 +164,7 @@ const dailyPool = () => { const days = ALL.filter(p => !p.practiceOnly), real = 
   return CONFIG.includePlaceholderDays || !real.length ? days : real; };
 
 // ================================================================ settings + theme
-const settings = Object.assign({ theme: "system", sound: false }, load(LS.settings, {}));
+const settings = Object.assign({ theme: "dark", sound: false }, load(LS.settings, {}));
 const saveSettings = () => { settings._at = Date.now(); save(LS.settings, settings); };   // _at: newest settings win when syncing
 const mq = matchMedia("(prefers-color-scheme: dark)");
 const effectiveTheme = () => settings.theme === "system" ? (mq.matches ? "dark" : "light") : settings.theme;
