@@ -765,9 +765,9 @@ function realScoresFromSnapshot(row, puzzleId, dayKey) {
 function figureSvg(opts) {
   const you = !!opts.you;
   const pose = opts.pose || "stand";
-  const arms = pose === "cheer" ? "M8.4 15.4 L3.4 8.2 M15.6 15.4 L20.6 8.2"
-    : pose === "wave" ? "M8.4 15.4 L4.2 23.4 M15.4 14.8 L20.8 6.6"
-    : "M8.4 15.4 L4.6 23.6 M15.6 15.4 L19.4 23.6";
+  const arms = pose === "cheer" ? "M7.6 16.2 L1.6 9.2 M16.4 16.2 L22.4 9.2"
+    : pose === "wave" ? "M8.2 16 L3.6 24.2 M15.6 15.2 L21.4 6.4"
+    : "M8.2 16 L4.2 24.4 M15.8 16 L19.8 24.4";
   const cls = you ? "platforms-figure player-figure" : "platforms-figure";
   const tier = you && opts.tier ? ` data-tier="${opts.tier}"` : "";
   return `<svg class="${cls}"${tier} viewBox="0 0 24 36" aria-hidden="true" focusable="false"><circle cx="12" cy="6.6" r="4.1"></circle><path class="pf-limb" d="${arms}"></path><path class="pf-body" d="M8.1 12.8 h7.8 l-1 10.6 H9.1 z"></path><path class="pf-limb" d="M10.1 23.2 l-1.7 10.4 M13.9 23.2 l1.7 10.4"></path></svg>`;
@@ -871,6 +871,7 @@ function debugResults(opts) {
   showResults(false);
   renderPlatforms.seedOnly = false;
   const el = $("#platforms");
+  if (el) setTimeout(() => el.scrollIntoView({ block: "center", behavior: "instant" }), 40);
   return el ? { percent: +el.dataset.percent, n: +el.dataset.n, band: +el.dataset.band, tier: el.dataset.tier, total } : null;
 }
 function platformScoreForPercent(target) {
@@ -1612,6 +1613,15 @@ $("#vidLoading .vl-btn").onclick = e => { e.stopPropagation(); const r = state.p
 countVisit();
 if (!ALL.length) { $("#question").textContent = "No puzzles found. Run build.py or load a puzzle file."; return; }
 function route() {
+  // Localhost only: #platforms-demo=90 opens the results staircase on a seeded percentile.
+  if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+    const demo = location.hash.match(/^#platforms-demo=(\d{1,3})$/);
+    if (demo) {
+      if (!state.puzzle) { state.mode = "daily"; state.dateKey = todayKey(); state.puzzle = puzzleForDate(state.dateKey); }
+      const picked = state.puzzle && platformScoreForPercent(Math.max(0, Math.min(100, +demo[1])));
+      if (picked) { const wel = $("#welcome"); if (wel) wel.classList.add("hidden"); debugResults({ total: picked.total, seedOnly: true }); return; }
+    }
+  }
   const h = location.hash, d = h.match(/(?:^#|&)d=(\d{4}-\d{2}-\d{2})/), p = h.match(/(?:^#|&)p=([^&]+)/);
   const pv = h.match(/preview=(\d{4}-\d{2}-\d{2})/) || location.search.match(/[?&]preview=(\d{4}-\d{2}-\d{2})/) || (/[?&]preview=1/.test(location.search) && location.search.match(/[?&]date=(\d{4}-\d{2}-\d{2})/));
   if (pv) return goPreview(pv[1]);

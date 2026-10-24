@@ -618,8 +618,8 @@ body.welcome-open{overflow:hidden}
 @media (prefers-reduced-motion:no-preference){
   .player-figure[data-tier="low"]{--hop:3px;animation:pf-jump .85s ease-in-out 1 both .4s}
   .player-figure[data-tier="mid"]{--hop:7px;animation:pf-jump 1s cubic-bezier(.2,.8,.2,1) 2 both .28s}
-  .player-figure[data-tier="high"]{--hop:11px;animation:pf-jump 1.12s cubic-bezier(.18,.75,.2,1) 3 both .18s}
-  .platforms-confetti{animation:pf-confetti var(--dur,1s) ease-out var(--delay,.25s) 3 both}
+  .player-figure[data-tier="high"]{--hop:11px;animation:pf-jump 1.12s cubic-bezier(.18,.75,.2,1) 4 both .7s}
+  .platforms-confetti{animation:pf-confetti var(--dur,1s) ease-out var(--delay,.25s) 4 both}
 }
 @keyframes pf-jump{
   0%,100%{transform:translateY(0)}
