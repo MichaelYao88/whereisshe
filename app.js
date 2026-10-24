@@ -145,6 +145,18 @@ const CommunityStats = {
     } catch {}
     return communityFromRow(row, total) || communityFromRow(communitySeed(puzzleId, dayKey), total);
   },
+  // Raw public snapshot, or null. The platforms graphic peels real finishes out of this
+  // in community-distribution.js. fetch() is unchanged and still falls back to communitySeed().
+  async snapshot(puzzleId, dayKey) {
+    if (!puzzleId || !dayKey || !accountsOn()) return null;
+    try {
+      if (Cloud.ready) await Promise.race([Cloud.ready, new Promise(r => setTimeout(r, 4000))]);
+      if (!Cloud.sb) return null;
+      const { data, error } = await Cloud.sb.from("community_snapshots").select("players,avg_total,histogram,per_round_avg,seeded").eq("puzzle_id", puzzleId).eq("day_key", dayKey).maybeSingle();
+      if (error || !data) return null;
+      return data;
+    } catch { return null; }
+  },
 };
 
 // ================================================================ helpers
@@ -684,6 +696,7 @@ function showResults(scroll) {
   renderMeetHer(p);
   $("#nextBtn").textContent = state.mode === "archive" ? "Back to archive →" : isPreview() ? "Back to loading zone →" : "Play past days →";
   renderCommunity(p, t);
+  renderPlatforms(p, g);   // reward staircase. Total points, same number as the score card. Partial days are not ranked.
   renderCrossPromo();   // daily results only; the pre-results interstitial is a separate step and already finished
   $("#result").classList.remove("hidden");
   drawSummary(p, g);
@@ -733,6 +746,146 @@ async function renderCommunity(p, total) {
     return `<div class="crow"><span class="cn">Round ${i + 1}</span><span class="cb"><i style="width:${w}%"></i></span><span class="cp">${n0(avg)}</span></div>`;
   }).join("");
   body.innerHTML = `<p class="community-lead">You beat <b>${data.pctBeaten}%</b> of players. Average score ${n0(data.avgTotal)}.</p>${bars}`;
+}
+
+// ================================================================ platforms reward
+// Metric: total points for a finished 5-round day (sum of round scores, max 25,000).
+// That is the number on the score card, in the share text, and in stats. Distance is
+// per round, so it is not the ranking. A partial game (under 5 scored rounds) is not
+// compared — those points are not a full day.
+// The field is community-distribution.js: a seeded stand-in, blended with real
+// finishes peeled out of the public snapshot when one exists. COMMUNITY_REAL_TAKEOVER
+// is the handoff. Until that many real plays are in, the percent is partly synthetic.
+function realScoresFromSnapshot(row, puzzleId, dayKey) {
+  if (!row || !window.CommunityDistribution) return [];
+  let seedHist = [];
+  try { seedHist = communitySeed(puzzleId, dayKey).histogram; } catch { seedHist = []; }
+  return CommunityDistribution.realScoresFromSnapshot(row, seedHist);
+}
+function figureSvg(opts) {
+  const you = !!opts.you;
+  const pose = opts.pose || "stand";
+  const arms = pose === "cheer" ? "M8.4 15.4 L3.4 8.2 M15.6 15.4 L20.6 8.2"
+    : pose === "wave" ? "M8.4 15.4 L4.2 23.4 M15.4 14.8 L20.8 6.6"
+    : "M8.4 15.4 L4.6 23.6 M15.6 15.4 L19.4 23.6";
+  const cls = you ? "platforms-figure player-figure" : "platforms-figure";
+  const tier = you && opts.tier ? ` data-tier="${opts.tier}"` : "";
+  return `<svg class="${cls}"${tier} viewBox="0 0 24 36" aria-hidden="true" focusable="false"><circle cx="12" cy="6.6" r="4.1"></circle><path class="pf-limb" d="${arms}"></path><path class="pf-body" d="M8.1 12.8 h7.8 l-1 10.6 H9.1 z"></path><path class="pf-limb" d="M10.1 23.2 l-1.7 10.4 M13.9 23.2 l1.7 10.4"></path></svg>`;
+}
+function confettiHtml(tier) {
+  const n = tier === "high" ? 12 : tier === "mid" ? 6 : 3;
+  const reach = tier === "high" ? 22 : tier === "mid" ? 14 : 8;
+  const colors = ["#FFE48A", "#3B5BFF", "#16B364", "#F5B82E", "#FFFFFF", "#8EA2FF"];
+  let html = "";
+  for (let i = 0; i < n; i++) {
+    const t = n === 1 ? 0.5 : i / (n - 1);
+    const x = Math.round((t - 0.5) * reach * 2.1);
+    const lift = Math.max(0.4, 1 - Math.abs(t - 0.5) * 1.2);
+    const y = Math.round(-8 - lift * reach);
+    const delay = (0.2 + (i % 5) * 0.05).toFixed(2);
+    const dur = (tier === "low" ? 0.85 : tier === "mid" ? 1.05 : 1.25).toFixed(2);
+    const rot = i % 2 ? 150 : -130;
+    html += `<i class="platforms-confetti" style="--x:${x}px;--y:${y}px;--delay:${delay}s;--dur:${dur}s;--rot:${rot}deg;background:${colors[i % colors.length]}"></i>`;
+  }
+  return html;
+}
+function platformsMarkup(cmp) {
+  const motion = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const cols = [];
+  for (let i = 0; i < cmp.n; i++) {
+    const t = cmp.n <= 1 ? 1 : i / (cmp.n - 1);
+    const you = i === cmp.bandIndex;
+    const crowd = Math.max(0, (cmp.figures[i] || 0) - (you ? 1 : 0));
+    const pose = !you ? "stand" : cmp.tier === "high" ? "cheer" : cmp.tier === "mid" ? "wave" : "stand";
+    const people = [];
+    const left = Math.floor(crowd / 2), right = crowd - left;
+    for (let k = 0; k < left; k++) people.push(figureSvg({}));
+    if (you) people.push(figureSvg({ you: true, pose, tier: cmp.tier }));
+    for (let k = 0; k < right; k++) people.push(figureSvg({}));
+    const marker = you ? `<div class="you-marker"><span>You!</span><i aria-hidden="true"></i></div>` : "";
+    const confetti = you && motion ? confettiHtml(cmp.tier) : "";
+    cols.push(`<div class="platform${you ? " is-you" : ""}" style="--t:${t.toFixed(4)}" data-band="${i}"><div class="platform-people">${marker}${people.join("")}${confetti}</div><div class="platform-block"></div></div>`);
+  }
+  const note = cmp.seeded ? `<p class="platforms-note">Stand-in scores until more finished games are counted.</p>` : "";
+  return `<p class="platforms-kicker">Where you stand</p><div class="platforms-stage" role="img" aria-label="You are on platform ${cmp.bandIndex + 1} of ${cmp.n}, better than ${cmp.percent}% of players.">${cols.join("")}</div><p class="platforms-caption">Better than ${cmp.percent}% of players</p>${note}`;
+}
+function paintPlatforms(root, total, synthetic, real) {
+  const cmp = CommunityDistribution.compareScore(total, synthetic, real);
+  const sig = [cmp.percent, cmp.n, cmp.bandIndex, cmp.tier, cmp.seeded ? 1 : 0, real.length].join(":");
+  if (root.dataset.sig === sig) return cmp;
+  root.dataset.sig = sig;
+  root.dataset.percent = String(cmp.percent);
+  root.dataset.n = String(cmp.n);
+  root.dataset.band = String(cmp.bandIndex);
+  root.dataset.tier = cmp.tier;
+  root.dataset.seeded = cmp.seeded ? "1" : "0";
+  root.innerHTML = platformsMarkup(cmp);
+  return cmp;
+}
+async function renderPlatforms(p, game) {
+  const seedOnly = !!renderPlatforms.seedOnly;
+  const root = $("#platforms");
+  const CD = window.CommunityDistribution;
+  if (!root || !CD || !p) return;
+  const seq = ++renderPlatforms.seq;
+  root.classList.remove("hidden");
+  const total = CD.finishedTotal(game, CONFIG.rounds);
+  if (total == null) {
+    root.dataset.sig = "partial";
+    delete root.dataset.percent;
+    root.innerHTML = `<p class="platforms-kicker">Where you stand</p><p class="platforms-caption">Finish all five rounds to see where you stand.</p>`;
+    return;
+  }
+  const dayKey = state.dateKey || "undated";
+  const synthetic = CD.syntheticScores(p.id, dayKey);
+  root.dataset.sig = "";
+  paintPlatforms(root, total, synthetic, []);
+  if (seedOnly) return;
+  const pending = CommunityStats.snapshot(p.id, dayKey).catch(() => null);
+  const quick = await Promise.race([pending, new Promise(r => setTimeout(() => r(undefined), 800))]);
+  if (seq !== renderPlatforms.seq) return;
+  const apply = row => {
+    if (!row || seq !== renderPlatforms.seq) return;
+    paintPlatforms(root, total, synthetic, realScoresFromSnapshot(row, p.id, dayKey));
+  };
+  if (quick) apply(quick);
+  else pending.then(apply).catch(() => {});
+}
+renderPlatforms.seq = 0;
+// Localhost only: open the real results screen on a finished total, for screenshots.
+function debugResults(opts) {
+  if (!/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return null;
+  opts = opts || {};
+  const p = state.puzzle;
+  if (!p) return null;
+  const total = Math.max(0, Math.min(25000, Math.round(+opts.total || 0)));
+  const share = Math.floor(total / CONFIG.rounds);
+  const rounds = p.rounds.map(r => ({ lat: r.lat, lng: r.lng, dist: 800, pts: share }));
+  rounds[rounds.length - 1].pts += total - share * CONFIG.rounds;
+  state.game = { rounds, cur: CONFIG.rounds - 1, done: true, adSeen: true, total };
+  const wel = $("#welcome"); if (wel) wel.classList.add("hidden");
+  const inter = $("#interstitial"); if (inter) inter.classList.add("hidden");
+  state.busy = false;
+  $("#stage").classList.add("hidden");
+  renderPlatforms.seedOnly = !!opts.seedOnly;
+  showResults(false);
+  renderPlatforms.seedOnly = false;
+  const el = $("#platforms");
+  return el ? { percent: +el.dataset.percent, n: +el.dataset.n, band: +el.dataset.band, tier: el.dataset.tier, total } : null;
+}
+function platformScoreForPercent(target) {
+  if (!/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return null;
+  const CD = window.CommunityDistribution, p = state.puzzle;
+  if (!CD || !p) return null;
+  const synth = CD.syntheticScores(p.id, state.dateKey || "undated");
+  const blend = CD.blendSamples(synth, []);
+  let best = 0, bestPct = 0, bestDiff = 1e9;
+  for (let t = 0; t <= 25000; t += 25) {
+    const pct = CD.percentBeaten(t, blend);
+    const d = Math.abs(pct - target);
+    if (d < bestDiff || (d === bestDiff && pct >= target && bestPct < target)) { best = t; bestPct = pct; bestDiff = d; }
+  }
+  return { total: best, percent: bestPct };
 }
 
 // ================================================================ stats (today's daily only)
@@ -1410,7 +1563,8 @@ window.WISLoadFiles = handleFiles;
 window.WIS = { videoState: () => ({ state: VS.state, tries: VS.tries, round: VS.round, src: VS.url, log: VS.log.slice(), preload: preloadNext.el ? preloadNext.el.dataset.src : null }), crossPromoCheck, visits: () => load(LS.visits, 0), Zoom, fitMedia, summaryMap: () => summaryMap, CONFIG, dailyPool, puzzleForDate, schedule: () => SCHED, mode: () => state.mode, dockMode, puzzleHash, scoreFor, isPerfect, haversineKm, band, resultText, puzzles: () => ALL, map: () => map, communitySeed, pctFromHistogram,
   features: () => ({ accounts: accountsOn(), premium: premiumOn(), submissions: submissionsOn(), ads: adsOn() }),
   cloud: () => ({ state: Cloud.state, user: Cloud.user ? { id: Cloud.user.id, email: Cloud.user.email } : null, premium: isPremium(), profile: Cloud.profile, sync: load(LS.sync, null), syncing: !!Cloud.syncing }),
-  syncNow, mergeStats, mergeResults, statsFromDays, ledgerFromResults, feature: () => ({ files: FF.files.length, gate: !$("#ffGate").classList.contains("hidden"), form: !$("#featureForm").classList.contains("hidden") }) };   // test hooks
+  syncNow, mergeStats, mergeResults, statsFromDays, ledgerFromResults, feature: () => ({ files: FF.files.length, gate: !$("#ffGate").classList.contains("hidden"), form: !$("#featureForm").classList.contains("hidden") }),
+  debugResults, platformScoreForPercent };   // test hooks
 
 // ================================================================ wire up
 $("#guessBtn").onclick = submitGuess; $("#nextRoundBtn").onclick = nextRound; $("#nextBtn").onclick = next;
