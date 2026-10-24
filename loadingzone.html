@@ -122,8 +122,9 @@ function warnings(pid, rs) {
   const w = [], vp = rs.map((r, i) => r.media_type === "video" ? i + 1 : 0).filter(Boolean), exc = (S.exceptions || {})[pid];
   if (rs.length !== 5) w.push(`${rs.length} rounds`);
   if (vp[0] !== 1) w.push("round 1 isn't a video");
-  if (exc) { if (vp.join() !== "1") w.push(`videos in rounds ${vp.join(", ") || "none"}`); }
-  else if (vp.length >= 3 ? !(vp[0] === 1 && vp[1] === 2 && vp[vp.length - 1] === 5 && vp.length === 3) : vp.join() !== "1,5") w.push(`videos in rounds ${vp.join(", ") || "none"}`);
+  const pattern = vp.join();
+  if (exc) { if (pattern !== "1") w.push(`videos in rounds ${pattern || "none"}`); }
+  else if (pattern !== "1,2,3,4,5" && (vp.length >= 3 ? !(vp[0] === 1 && vp[1] === 2 && vp[vp.length - 1] === 5 && vp.length === 3) : pattern !== "1,5")) w.push(`videos in rounds ${pattern || "none"}`);
   rs.forEach((r, i) => { if (!(r.media_type === "video" ? r.poster_url : r.image_url)) w.push(`round ${i + 1} has no picture`); });
   return w;
 }
