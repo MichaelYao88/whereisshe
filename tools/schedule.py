@@ -113,6 +113,8 @@ def video_problem(pid, rows, exceptions):
         if got != "1":
             return f"{pid}: exception allows a video in round 1 only (videos in {got})"
         return None
+    if got == "1,2,3,4,5":
+        return None  # all-video day (Michael, 2026-10-24)
     if len(positions) >= 3:
         if not (positions[0] == 1 and positions[1] == 2 and positions[-1] == 5 and len(positions) == 3):
             return f"{pid}: a 3-video day must be rounds 1, 2 and 5 only (videos in {got})"
