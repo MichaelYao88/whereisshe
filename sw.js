@@ -140,10 +140,25 @@ async function matchShell(cache, request) {
     || (path === "/" ? cache.match("/index.html") : null);
 }
 
+function wantsFresh(request) {
+  const path = new URL(request.url).pathname;
+  if (request.mode === "navigate") return true;
+  if (path === "/" || path.endsWith(".html") || path.endsWith("/")) return true;
+  if (path === "/puzzles-data.js" || path === "/schedule.json") return true;
+  return false;
+}
+
+async function fromNetwork(request) {
+  // reload skips the HTTP cache so a new day's puzzle file is not stuck behind GitHub Pages' 10 min cache.
+  if (!wantsFresh(request)) return fetch(request);
+  try { return await fetch(request, { cache: "reload" }); }
+  catch (e) { return fetch(request.url, { cache: "reload", credentials: "same-origin", redirect: "follow" }); }
+}
+
 async function networkFirst(request) {
   const cache = await caches.open(CACHE);
   try {
-    const fresh = await fetch(request);
+    const fresh = await fromNetwork(request);
     if (fresh && fresh.ok && fresh.type === "basic") {
       await store(cache, request, fresh.clone()).catch(function () {});
     }
