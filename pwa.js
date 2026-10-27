@@ -59,7 +59,7 @@
     var bar = document.createElement("div");
     bar.id = "pwaInstall";
     bar.setAttribute("role", "group");
-    bar.setAttribute("aria-label", "Install WhereIsShe");
+    bar.setAttribute("aria-label", "Install whereisshe.gg");
     bar.style.cssText = "position:fixed;z-index:30;left:calc(10px + env(safe-area-inset-left, 0px));bottom:calc(42vh + env(safe-area-inset-bottom, 0px));display:flex;align-items:center;margin:0;padding:2px 2px 2px 12px;border-radius:999px;background:#3B5BFF;color:#fff;box-shadow:0 8px 18px -8px rgba(0,0,0,.65);font:700 12.5px/1 Helvetica,Arial,sans-serif;letter-spacing:.02em;max-width:min(168px, calc(46vw - 20px));";
     var go = document.createElement("button");
     go.type = "button";

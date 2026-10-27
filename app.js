@@ -7,7 +7,7 @@
 
 // ================================================================ config
 const CONFIG = {
-  brand: "WhereIsShe",
+  brand: "whereisshe.gg",
   // Public URL used in share links. From file:// we can't share a local path, so a placeholder is used.
   siteUrl: (location.protocol.startsWith("http") ? location.origin + location.pathname : "https://whereisshe.gg/"),
   // Daily No. 1 date (launch day).
@@ -23,8 +23,8 @@ const CONFIG = {
   crossPromo: {
     enabled: true, url: "https://ranki.gg",
     title: "From the same creator",
-    blurb: "Ranki is a separate daily ranking puzzle, not an ad.",
-    cta: "Play Ranki →", dismiss: "Not now",
+    blurb: "ranki.gg is a separate daily ranking puzzle, not an ad.",
+    cta: "Play ranki.gg →", dismiss: "Not now",
     minPlayed: 5, minStreak: 3, snoozeDays: 7,
   },
   videoRetries: 2,                   // automatic reloads of a clip after an error or a stall
@@ -398,7 +398,7 @@ function showUnscheduled(key) {
   showView("play"); renderHero();
   $("#heroKind").textContent = "No puzzle";
   $("#question").textContent = "Nothing scheduled";
-  document.title = "WhereIsShe.gg · Nothing scheduled";
+  document.title = "whereisshe.gg · Nothing scheduled";
   const empty = $("#emptyDay"); empty.classList.remove("hidden");
   $("#emptyDayText").textContent = `No puzzle is pinned for ${prettyDate(key)}.`;
   setHash(linkHash()); window.scrollTo({ top: 0 });
@@ -428,7 +428,7 @@ function showRound(i, revealed) {
   const p = state.puzzle, g = state.game, r = p.rounds[i]; g.cur = i; state.pin = null;
   $("#heroKind").textContent = `Round ${i + 1} / ${CONFIG.rounds}`;
   $("#question").textContent = dayTitle(p);   // v10: the day code ("she-001 · No. 001"); name/handle only on the Meet card
-  document.title = `WhereIsShe.gg · ${p.id}`;
+  document.title = `whereisshe.gg · ${p.id}`;
   showMedia(r, i);
   $("#phTag") && $("#phTag").classList.toggle("hidden", !p.placeholder);
   if (p.featured) $("#credit").innerHTML = `<span class="who-hint">${esc(whoHint(p))}</span>`;
@@ -788,7 +788,7 @@ function showView(v) {
   if (v === "play" && map) setTimeout(() => map.invalidateSize(), 0);
   if (v === "home") syncHomeMotion();
 }
-const HOME_TITLE = "WhereIsShe.gg · Play today's where-in-the-world puzzle";
+const HOME_TITLE = "whereisshe.gg · Play today's where-in-the-world puzzle";
 function fillHomeCard() {
   const api = window.WISHome; if (!api || !$("#homePlay")) return;
   const key = todayKey();
@@ -965,14 +965,14 @@ async function submitOptin(e) {
   if (errs.length) { msg.className = "form-msg bad"; msg.textContent = "Please add " + errs.join(", ") + "."; return; }
   const payload = { handle, email, ig_url: `https://www.instagram.com/${handle}/`, consent_photos: true, adult: true, removal_ack: true,
     note: f.note.value.trim(), submitted_at: new Date().toISOString(), consent_text: $("#consentText").textContent.trim() };
-  const how = await postOrMail(CONFIG.optinEndpoint, payload, `WhereIsShe opt-in: @${handle}`,
-    `Please feature me on WhereIsShe.\n\nInstagram: @${handle}\nEmail: ${email}\n\n✔ I am the person in the photos and consent to them being used in the game.\n✔ I am 18 or older.\n✔ I understand I can have my photos removed at any time.\n\nNote: ${payload.note || "-"}\n\nSubmitted ${payload.submitted_at}`);
+  const how = await postOrMail(CONFIG.optinEndpoint, payload, `whereisshe.gg opt-in: @${handle}`,
+    `Please feature me on whereisshe.gg.\n\nInstagram: @${handle}\nEmail: ${email}\n\n✔ I am the person in the photos and consent to them being used in the game.\n✔ I am 18 or older.\n✔ I understand I can have my photos removed at any time.\n\nNote: ${payload.note || "-"}\n\nSubmitted ${payload.submitted_at}`);
   msg.className = "form-msg good";
   msg.textContent = how === "posted" ? "Thanks! We got your request and will email you before anything goes live." : "Thanks! Your email app should open with your request filled in. Hit send to finish.";
   f.reset();
 }
 function removalModal() {
-  openModal(`<h2>Remove my photos</h2><p style="color:var(--muted);font-size:14px">Featured on WhereIsShe and want out? We'll take your photos and profile link down, no questions asked.</p>
+  openModal(`<h2>Remove my photos</h2><p style="color:var(--muted);font-size:14px">Featured on whereisshe.gg and want out? We'll take your photos and profile link down, no questions asked.</p>
     <form id="removeForm" class="optin-form" novalidate>
       <label>Instagram handle<input name="handle" placeholder="@yourhandle" autocomplete="off"></label>
       <label>Email<input name="email" type="email" placeholder="you@example.com"></label>
@@ -980,8 +980,8 @@ function removalModal() {
   $("#removeForm").onsubmit = async e => {
     e.preventDefault(); const f = e.target, handle = handleOf(f.handle.value), email = f.email.value.trim();
     if (!handle && !email) { $("#removeMsg").className = "form-msg bad"; $("#removeMsg").textContent = "Add your handle or email."; return; }
-    const how = await postOrMail(CONFIG.removalEndpoint, { handle, email, requested_at: new Date().toISOString() }, `WhereIsShe removal: @${handle}`,
-      `Please remove my photos and profile link from WhereIsShe.\n\nInstagram: @${handle}\nEmail: ${email}`);
+    const how = await postOrMail(CONFIG.removalEndpoint, { handle, email, requested_at: new Date().toISOString() }, `whereisshe.gg removal: @${handle}`,
+      `Please remove my photos and profile link from whereisshe.gg.\n\nInstagram: @${handle}\nEmail: ${email}`);
     $("#removeMsg").className = "form-msg good"; $("#removeMsg").textContent = how === "posted" ? "Done. We'll confirm by email." : "Your email app should open with the request filled in. Hit send.";
   };
 }
@@ -1003,7 +1003,7 @@ function menuModal() {
   openModal(`<h2>Settings &amp; more</h2><div class="menu-list">
     <button id="mArchive">🗓 Archive<small>Every past daily</small></button>
     ${accountsOn() ? `<button id="mAccount">${Cloud.user ? "👤 Your account" : "👤 Sign in"}<small>${Cloud.user ? esc(Cloud.user.email || "") : "Optional: sync stats across devices"}</small></button>` : ""}
-    ${premiumOn() ? `<button id="mPremium">⭐ ${isPremium() ? "Premium" : "Go Premium"}<small>${isPremium() ? "No ads · WhereIsShe and Ranki" : "One subscription for WhereIsShe and Ranki"}</small></button>` : ""}
+    ${premiumOn() ? `<button id="mPremium">⭐ ${isPremium() ? "Premium" : "Go Premium"}<small>${isPremium() ? "No ads · whereisshe.gg and ranki.gg" : "One subscription for whereisshe.gg and ranki.gg"}</small></button>` : ""}
     <button id="mOptin">📷 Feature me<small>${submissionsOn() ? "Submit your own travel photos to be featured" : "Opt in to be featured in a future puzzle"}</small></button>
     <button id="mSettings">⚙️ Settings<small>Theme, load a puzzle file</small></button>
     <button id="mHow">❓ How to play</button>
@@ -1068,7 +1068,7 @@ function renderCrossPromo() {
   const c = promoCfg(), go = $("#crossPromoGo");
   $("#crossPromoTitle").textContent = c.title || "From the same creator";
   $("#crossPromoBody").textContent = c.blurb || "";
-  go.href = promoUrl(c.url); go.target = "_blank"; go.rel = "noopener"; go.textContent = c.cta || "Play Ranki →";
+  go.href = promoUrl(c.url); go.target = "_blank"; go.rel = "noopener"; go.textContent = c.cta || "Play ranki.gg →";
   $("#crossPromoDismiss").textContent = c.dismiss || "Not now";
   el.classList.remove("hidden"); markPromoSession();
 }
@@ -1088,7 +1088,7 @@ function clearGameData() {
 }
 function clearDataModal() {
   openModal(`<h2>Clear my game data?</h2>
-    <p>This removes your WhereIsShe progress, scores, streak, stats and settings from this browser${Cloud.user ? " and signs you out here (your account's synced copy stays)" : ""}. It can't be undone.</p>
+    <p>This removes your whereisshe.gg progress, scores, streak, stats and settings from this browser${Cloud.user ? " and signs you out here (your account's synced copy stays)" : ""}. It can't be undone.</p>
     <div class="confirm-row"><button class="pill-btn" id="clearCancel">Cancel</button><button class="pill-btn primary danger" id="clearConfirm">Clear data</button></div>`);
   $("#clearCancel").onclick = closeModal; $("#clearConfirm").onclick = clearGameData;
 }
@@ -1115,7 +1115,7 @@ function howModal() {
 }
 function aboutModal() {
   // no per-round credits here: they would spoil the answers and name the featured woman before round 5
-  openModal(`<h2>About &amp; credits</h2><p style="color:var(--muted);font-size:14px">WhereIsShe is a prototype. Every day features someone who opted in; their photos are used with their permission, and they're credited (with a link to their Instagram) on the traveler card after round 5.</p>
+  openModal(`<h2>About &amp; credits</h2><p style="color:var(--muted);font-size:14px">whereisshe.gg is a prototype. Every day features someone who opted in; their photos are used with their permission, and they're credited (with a link to their Instagram) on the traveler card after round 5.</p>
     <p style="font-size:13px"><a href="about.html" target="_blank" rel="noopener">About</a> · <a href="how-to-play.html" target="_blank" rel="noopener">How to play</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a> · <a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="refund.html" target="_blank" rel="noopener">Refunds</a></p>
     <p style="font-size:12px;color:var(--muted)">Map data © OpenStreetMap contributors · Basemap: OpenFreeMap / OpenMapTiles (fallback: Esri). Rendering: MapLibre GL JS (BSD-3-Clause). Map library: Leaflet (BSD-2-Clause).</p>`);
 }
@@ -1363,7 +1363,7 @@ function accountModal(reason) {
   if (!u) {
     openModal(`<div class="acc" data-k="login"><h2>Sign in</h2>
       <p class="acc-sub">Keep your streak, results and settings on every device. <b>Optional:</b> you can always play without an account.</p>
-      ${reason === "premium" ? `<div class="notice">⭐ Sign in first, so Premium is tied to your account on every device. One subscription covers WhereIsShe and Ranki.</div>` : ""}
+      ${reason === "premium" ? `<div class="notice">⭐ Sign in first, so Premium is tied to your account on every device. One subscription covers whereisshe.gg and ranki.gg.</div>` : ""}
       ${googleOn() ? `<button class="acc-google" id="accGoogle" type="button"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.1C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.2-13.5-10l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>
       <div class="acc-or"><span>or</span></div>` : ""}
       <form id="accEmailForm" class="optin-form" novalidate><label>Email<input name="email" type="email" placeholder="you@example.com" autocomplete="email" required></label>
@@ -1381,7 +1381,7 @@ function accountModal(reason) {
   openModal(`<div class="acc" data-k="account"><h2>Your account</h2>
     <div class="acc-row"><div class="acc-av">${esc((u.email || "?").slice(0, 1).toUpperCase())}</div><div><b class="acc-email">${esc(u.email || "")}</b><small>Signed in · stats sync across your devices</small></div></div>
     <div class="acc-sync"><span id="accSync">${esc(syncLine())}</span><button class="link-btn" id="accSyncNow" type="button">Sync now</button></div>
-    ${premiumOn() ? (prem ? `<div class="acc-plan prem">⭐ <b>Premium</b> · WhereIsShe and Ranki · no ads${p.premium_until ? ` · until ${esc(new Date(p.premium_until).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }))}` : ""}</div>`
+    ${premiumOn() ? (prem ? `<div class="acc-plan prem">⭐ <b>Premium</b> · whereisshe.gg and ranki.gg · no ads${p.premium_until ? ` · until ${esc(new Date(p.premium_until).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }))}` : ""}</div>`
       : `<div class="acc-plan"><span>Free plan</span><button class="pill-btn primary" id="accPremium" type="button">⭐ Go Premium</button></div>`) : ""}
     <div class="confirm-row"><button class="pill-btn ghost" id="accSignOut" type="button">Sign out</button></div></div>`, "account");
   $("#accSyncNow").onclick = async () => { $("#accSync").textContent = "Syncing…"; await syncNow("manual"); if ($("#accSync")) $("#accSync").textContent = syncLine(); };
@@ -1392,11 +1392,11 @@ function premiumModal() {
   if (!premiumOn()) return;
   const c = CONFIG.premium, prem = isPremium(), u = Cloud.user;
   const label = prem ? "You're Premium ⭐" : !u ? "Sign in to go Premium" : !c.checkoutUrl ? "Checkout opens soon" : `Go Premium${c.price ? ` · ${esc(c.price)}` : ""}`;
-  openModal(`<div class="prem-card" data-k="premium"><div class="prem-badge">⭐ Premium</div><h2>WhereIsShe Premium</h2>
+  openModal(`<div class="prem-card" data-k="premium"><div class="prem-badge">⭐ Premium</div><h2>whereisshe.gg Premium</h2>
     <div class="prem-price">${c.price ? esc(c.price) : "Price coming soon"}</div>${c.billing ? `<div class="prem-billing">${esc(c.billing)}</div>` : ""}
-    <p class="prem-both">One Premium unlocks WhereIsShe and <a href="https://ranki.gg" target="_blank" rel="noopener">Ranki</a>.</p>
+    <p class="prem-both">One Premium unlocks whereisshe.gg and <a href="https://ranki.gg" target="_blank" rel="noopener">ranki.gg</a>.</p>
     <ul class="prem-list"><li><span>🚫</span>No ads: no banner and no ad after round 5</li><li><span>⚡</span>Priority review for your Feature me submissions</li>
-      <li><span>🎮</span>The same subscription unlocks Ranki</li><li><span>☁️</span>On every device you sign in on</li><li><span>❤️</span>Supports a small indie game</li></ul>
+      <li><span>🎮</span>The same subscription unlocks ranki.gg</li><li><span>☁️</span>On every device you sign in on</li><li><span>❤️</span>Supports a small indie game</li></ul>
     ${c.testMode ? `<p class="prem-test">🧪 Test mode: no real charge. Use the Lemon Squeezy test card 4242 4242 4242 4242.</p>` : ""}
     <button class="pill-btn primary prem-go" id="premGo" type="button" ${prem || (u && !c.checkoutUrl) ? "disabled" : ""}>${label}</button>
     <p class="prem-fine">Renews monthly until you cancel; cancel anytime from your Lemon Squeezy receipt email. Payments are handled by Lemon Squeezy, our merchant of record. <a href="terms.html" target="_blank" rel="noopener">Terms</a> · <a href="refund.html" target="_blank" rel="noopener">Refunds</a> · <a href="privacy.html" target="_blank" rel="noopener">Privacy</a></p></div>`, "premium");
@@ -1451,8 +1451,8 @@ function renderFeatureExtras() {
     : `To keep out spam, submissions need a free account with a verified email. Sign in with ${googleOn() ? "Google or " : ""}a one-time email link, no password.`;
   $("#ffGateBtn").textContent = u && !ok ? "Account" : "Log in to submit";
   if (ok) $("#ffSignedIn").innerHTML = `Signed in as <b>${esc(u.email)}</b>. We'll only use this email to reach you about your submission.`;
-  const up = premiumOn() ? (isPremium() ? `<div class="ff-prio">⭐ You're Premium: your submission gets <b>priority review</b>. The same subscription covers Ranki.</div>`
-    : `<div class="upsell"><div><b>⭐ Premium on WhereIsShe and Ranki</b><small>No ads and priority review here, plus Premium on Ranki. ${[CONFIG.premium.price, CONFIG.premium.billing].filter(Boolean).map(esc).join(" · ")}</small></div><button class="pill-btn primary" type="button" data-go-premium>Go Premium</button></div>`) : "";
+  const up = premiumOn() ? (isPremium() ? `<div class="ff-prio">⭐ You're Premium: your submission gets <b>priority review</b>. The same subscription covers ranki.gg.</div>`
+    : `<div class="upsell"><div><b>⭐ Premium on whereisshe.gg and ranki.gg</b><small>No ads and priority review here, plus Premium on ranki.gg. ${[CONFIG.premium.price, CONFIG.premium.billing].filter(Boolean).map(esc).join(" · ")}</small></div><button class="pill-btn primary" type="button" data-go-premium>Go Premium</button></div>`) : "";
   $$("#ffUpsell, #ffDoneUpsell, #ffGateUpsell").forEach(b => { b.innerHTML = b.id !== "ffUpsell" && isPremium() ? "" : up; });
   $$("[data-go-premium]").forEach(b => b.onclick = goPremium);
 }
