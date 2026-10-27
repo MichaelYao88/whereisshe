@@ -70,8 +70,8 @@ test("the landing page leads with play, then premium, how to play, and suggest",
   assert.ok(play >= 0 && play < prem && prem < how && how < suggest);
   assert.match(html, /Play today's puzzle/);
   assert.match(html, /Go Premium:/);
-  assert.match(html, /no ads, full archive, and unlocks Ranki too/);
-  assert.match(html, /You're Premium\. No ads, and Ranki is included\./);
+  assert.match(html, /no ads, full archive, and unlocks ranki\.gg too/);
+  assert.match(html, /You're Premium\. No ads, and ranki\.gg is included\./);
   assert.match(html, /id="playView" class="hidden"/);
   assert.match(html, /wis-boot-home/);
   assert.match(html, /wis-boot-play/);
@@ -82,7 +82,7 @@ test("the landing page leads with play, then premium, how to play, and suggest",
   assert.match(css, /html\.wis-boot-optin #optinView/);
   assert.match(css, /html\.wis-boot-home #adTop/);
   assert.match(css, /--stage-top/);
-  assert.match(html, /WhereIsShe\.gg · Play today's where-in-the-world puzzle/);
+  assert.match(html, /whereisshe\.gg · Play today's where-in-the-world puzzle/);
 });
 
 test("the how-to demo is a sample round with a tappable Instagram credit", () => {
@@ -162,7 +162,7 @@ test("the page wires the three home events and leaves checkout alone", () => {
   assert.match(html, /href="#optin"/);
   const card = sliceBetween(app, "function fillHomeCard", "function syncHomeMotion");
   assert.doesNotMatch(card, /poster|place_name|\.lat|\.lng|rounds/);
-  assert.match(sw, /wis-shell-v2/);
+  assert.match(sw, /wis-shell-v3/);
   assert.match(sw, /\/home\.js/);
 });
 
