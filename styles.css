@@ -27,6 +27,11 @@ button,input{font:inherit;color:inherit}
 button{cursor:pointer}
 a{color:var(--link)}
 .hidden{display:none!important}
+html.wis-boot-play #homeView,html.wis-boot-archive #homeView,html.wis-boot-optin #homeView{display:none!important}
+html.wis-boot-play #playView{display:block!important}
+html.wis-boot-archive #archiveView{display:block!important}
+html.wis-boot-optin #optinView{display:block!important}
+html.wis-boot-home #adTop,body.mode-home #adTop{display:none!important}
 
 /* ---------- floating corner controls ---------- */
 .round-btn{width:40px;height:40px;border-radius:50%;border:0;background:var(--surface2);color:var(--ink);display:grid;place-items:center;
@@ -575,3 +580,87 @@ body.welcome-open{overflow:hidden}
   .dock[data-mode="mini"] .guess-btn:disabled{opacity:.8;background:rgba(10,12,18,.7);color:#fff}
 }
 @media (max-width:760px) and (max-height:700px){.dock[data-mode="mini"] .map-area{height:min(26vw,120px);min-height:90px}}
+
+/* ---------- home: today's traveler, stepped sample, suggestion form ---------- */
+.home-play{cursor:pointer;width:100%}
+.home-play h1{margin-top:18px}
+.hero-top #homeNo{text-align:right}
+.home-person{display:flex;align-items:center;gap:12px;margin-top:16px;min-height:56px}
+.home-av,.home-mono{width:56px;height:56px;border-radius:50%;flex:none;overflow:hidden;background:rgba(255,255,255,.18);display:grid;place-items:center;font-weight:800;font-size:22px}
+.home-av img{width:56px;height:56px;object-fit:cover;display:block}
+.home-person-copy{min-width:0}
+.home-name{margin:0;font-size:clamp(18px,4.6vw,22px);font-weight:700;letter-spacing:-.03em;line-height:1.25}
+.home-name:empty{display:none}
+.home-play .hero-date{margin-top:4px}
+.home-play .pill-btn{display:block;width:100%;margin-top:18px;text-align:center}
+.home-premium{margin:14px 0 0}
+button.home-premium-btn{display:block;width:100%;text-align:left;background:var(--surface2);border:0;border-radius:18px;box-shadow:var(--shadow-soft);padding:14px 16px;color:var(--ink);font-size:14.5px;font-weight:700;line-height:1.4;letter-spacing:-.015em;cursor:pointer}
+button.home-premium-btn:hover{background:rgba(var(--ink-rgb),.03)}
+.home-premium-lead{color:var(--brand);font-weight:800}
+.home-premium-on{margin:0;background:var(--surface2);border-radius:18px;box-shadow:var(--shadow-soft);padding:14px 16px;font-size:14.5px;font-weight:700;line-height:1.4}
+.home-how{margin-top:28px}
+.home-suggest{margin-top:6px}
+.how-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.how-step{position:relative;background:var(--surface2);border-radius:22px;box-shadow:var(--shadow-soft);padding:14px 14px 16px}
+.how-step h3{margin:0 0 4px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--link)}
+.how-step>p{margin:0 0 12px;font-size:15.5px;line-height:1.35;font-weight:700;letter-spacing:-.02em}
+.mini{position:relative;background:var(--brand);color:#fff;border-radius:16px;padding:12px;overflow:hidden}
+.mini-kicker{display:flex;justify-content:space-between;gap:8px;font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.75}
+.mini-stage,.mini-map{position:relative;margin-top:8px;border-radius:12px;overflow:hidden;background:#0c0e13}
+.mini-clip,.mini-map svg{display:block;width:100%;height:auto}
+.mini-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:46px;height:46px;border-radius:50%;background:rgba(10,12,18,.55);display:grid;place-items:center;font-size:18px}
+.mini-pin{position:absolute;left:58%;top:46%;width:16px;height:16px;border-radius:50% 50% 50% 0;background:var(--brand);border:2px solid #fff;transform:translate(-50%,-100%) rotate(-45deg);box-shadow:0 3px 8px rgba(0,0,0,.35)}
+.mini-score{display:flex;align-items:baseline;justify-content:center;gap:6px;margin-top:14px}
+.mini-score b{font-size:40px;letter-spacing:-.04em;line-height:1}
+.mini-score span{font-size:13px;font-weight:800;letter-spacing:.08em;opacity:.8}
+.mini-dist{margin:6px 0 8px;text-align:center;font-size:16px;font-weight:800}
+.mini-next{display:block;width:100%;margin-top:12px;text-align:center;pointer-events:none}
+.mini-finger{position:absolute;z-index:4;font-size:26px;line-height:1;pointer-events:none;filter:drop-shadow(0 2px 1px rgba(0,0,0,.35))}
+.finger-1{top:62%;left:58%}
+.finger-2{top:58%;left:62%}
+.finger-4{top:46%;left:28%}
+a.mini-source{display:block;margin-top:10px;text-decoration:none;color:inherit}
+a.mini-source:focus-visible{outline:2px solid var(--brand);outline-offset:3px;border-radius:8px}
+.mini-source-line{display:inline-block;font-size:14px;font-weight:800;color:var(--link);text-decoration:underline;text-underline-offset:3px}
+.mini-opened{display:block;margin-top:8px;padding:12px 14px;border-radius:16px;background:var(--surface2);color:var(--ink);box-shadow:var(--shadow-soft)}
+.mini-opened b{display:block;font-size:14px;letter-spacing:-.02em}
+.mini-opened span{display:block;margin-top:3px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.mini-url{color:var(--link)!important;word-break:break-all}
+.submit-card{position:relative;background:var(--surface2);border-radius:22px;box-shadow:var(--shadow-soft);padding:6px 16px 18px}
+.puzzle-form label{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:14px 0 6px;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.puzzle-form .req{color:var(--bad);letter-spacing:.08em}
+.puzzle-form .opt{letter-spacing:.08em}
+.puzzle-form input,.puzzle-form textarea{width:100%;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);padding:12px 14px;font-size:16px;font-weight:600}
+.puzzle-form textarea{min-height:96px;resize:vertical;line-height:1.4}
+.puzzle-form input:focus,.puzzle-form textarea:focus{outline:2px solid var(--brand);border-color:transparent}
+.puzzle-form .pill-btn{width:100%;margin-top:16px}
+.form-error{margin:12px 0 0;color:var(--bad);font-size:14px;font-weight:700;line-height:1.35}
+.form-note{margin:10px 0 0;text-align:center;color:var(--muted);font-size:12px;font-weight:600}
+.puzzle-thanks{padding:18px 4px 8px;text-align:center}
+.puzzle-thanks h3{margin:0 0 6px;font-size:22px;letter-spacing:-.03em}
+.puzzle-thanks p{margin:0 0 14px;color:var(--muted);font-weight:600}
+.hp{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
+@media (prefers-reduced-motion:no-preference){
+  .home-how:not(.is-static) .mini-step1 .mini-play{animation:wisHomePlay 4.8s ease-in-out infinite}
+  .home-how:not(.is-static) .finger-1{animation:wisHomeFinger1 4.8s ease-in-out infinite}
+  .home-how:not(.is-static) .mini-pin{animation:wisHomePin 5.2s ease-in-out infinite}
+  .home-how:not(.is-static) .finger-2{animation:wisHomeFinger2 5.2s ease-in-out infinite}
+  .home-how:not(.is-static) .mini-score,.home-how:not(.is-static) .mini-dist{animation:wisHomeScore 5s ease-in-out infinite}
+  .home-how:not(.is-static) .mini-next{animation:wisHomeNext 5.4s ease-in-out infinite}
+  .home-how:not(.is-static) .how-step-next .mini-open-wrap{overflow:hidden;animation:wisHomeOpen 6.2s ease-in-out infinite}
+  .home-how:not(.is-static) .how-step-next .mini-source-line{animation:wisHomeSourceTap 6.2s ease-in-out infinite}
+  .home-how:not(.is-static) .finger-4{animation:wisHomeFinger4 6.2s ease-in-out infinite}
+}
+@keyframes wisHomePlay{0%,18%{transform:translate(-50%,-50%) scale(1)}32%,58%{transform:translate(-50%,-50%) scale(.92);background:rgba(255,255,255,.85);color:var(--brand)}74%,100%{transform:translate(-50%,-50%) scale(1)}}
+@keyframes wisHomePin{0%,14%{opacity:0;top:8%}28%{opacity:1;top:18%}40%,78%{opacity:1;top:46%}100%{opacity:0;top:46%}}
+@keyframes wisHomeFinger1{0%,10%{opacity:0}22%,48%{opacity:1}70%,100%{opacity:0}}
+@keyframes wisHomeFinger2{0%,16%{opacity:0;top:22%}34%,62%{opacity:1;top:52%}78%,100%{opacity:0;top:52%}}
+@keyframes wisHomeScore{0%,16%{opacity:.2;transform:translateY(6px)}34%,80%{opacity:1;transform:none}100%{opacity:.2;transform:none}}
+@keyframes wisHomeNext{0%,28%{transform:none;background:transparent;color:#fff}42%,60%{transform:scale(.96);background:#fff;color:var(--brand)}74%,100%{transform:none;background:transparent;color:#fff}}
+@keyframes wisHomeOpen{0%,22%{max-height:0;opacity:0}44%,76%{max-height:140px;opacity:1}100%{max-height:0;opacity:0}}
+@keyframes wisHomeSourceTap{0%,26%{transform:none}36%,50%{transform:scale(.98)}64%,100%{transform:none}}
+@keyframes wisHomeFinger4{0%,14%{opacity:0}28%,52%{opacity:1}68%,100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){
+  .mini-finger{display:none!important}
+}
+.home-how.is-static .mini-finger{display:none}
