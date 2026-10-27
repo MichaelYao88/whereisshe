@@ -872,7 +872,7 @@ function menuModal() {
   openModal(`<h2>Settings &amp; more</h2><div class="menu-list">
     <button id="mArchive">🗓 Archive<small>Every past daily</small></button>
     ${accountsOn() ? `<button id="mAccount">${Cloud.user ? "👤 Your account" : "👤 Sign in"}<small>${Cloud.user ? esc(Cloud.user.email || "") : "Optional: sync stats across devices"}</small></button>` : ""}
-    ${premiumOn() ? `<button id="mPremium">⭐ ${isPremium() ? "Premium" : "Go Premium"}<small>${isPremium() ? "No ads · priority review" : "No ads + priority review for submissions"}</small></button>` : ""}
+    ${premiumOn() ? `<button id="mPremium">⭐ ${isPremium() ? "Premium" : "Go Premium"}<small>${isPremium() ? "No ads · WhereIsShe and Ranki" : "One subscription for WhereIsShe and Ranki"}</small></button>` : ""}
     <button id="mOptin">📷 Feature me<small>${submissionsOn() ? "Submit your own travel photos to be featured" : "Opt in to be featured in a future puzzle"}</small></button>
     <button id="mSettings">⚙️ Settings<small>Theme, load a puzzle file</small></button>
     <button id="mHow">❓ How to play</button>
@@ -1225,7 +1225,7 @@ function accountModal(reason) {
   if (!u) {
     openModal(`<div class="acc" data-k="login"><h2>Sign in</h2>
       <p class="acc-sub">Keep your streak, results and settings on every device. <b>Optional:</b> you can always play without an account.</p>
-      ${reason === "premium" ? `<div class="notice">⭐ Sign in first, so Premium is tied to your account on every device.</div>` : ""}
+      ${reason === "premium" ? `<div class="notice">⭐ Sign in first, so Premium is tied to your account on every device. One subscription covers WhereIsShe and Ranki.</div>` : ""}
       ${googleOn() ? `<button class="acc-google" id="accGoogle" type="button"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.1C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.2-13.5-10l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>
       <div class="acc-or"><span>or</span></div>` : ""}
       <form id="accEmailForm" class="optin-form" novalidate><label>Email<input name="email" type="email" placeholder="you@example.com" autocomplete="email" required></label>
@@ -1243,7 +1243,7 @@ function accountModal(reason) {
   openModal(`<div class="acc" data-k="account"><h2>Your account</h2>
     <div class="acc-row"><div class="acc-av">${esc((u.email || "?").slice(0, 1).toUpperCase())}</div><div><b class="acc-email">${esc(u.email || "")}</b><small>Signed in · stats sync across your devices</small></div></div>
     <div class="acc-sync"><span id="accSync">${esc(syncLine())}</span><button class="link-btn" id="accSyncNow" type="button">Sync now</button></div>
-    ${premiumOn() ? (prem ? `<div class="acc-plan prem">⭐ <b>Premium</b> · no ads${p.premium_until ? ` · until ${esc(new Date(p.premium_until).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }))}` : ""}</div>`
+    ${premiumOn() ? (prem ? `<div class="acc-plan prem">⭐ <b>Premium</b> · WhereIsShe and Ranki · no ads${p.premium_until ? ` · until ${esc(new Date(p.premium_until).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }))}` : ""}</div>`
       : `<div class="acc-plan"><span>Free plan</span><button class="pill-btn primary" id="accPremium" type="button">⭐ Go Premium</button></div>`) : ""}
     <div class="confirm-row"><button class="pill-btn ghost" id="accSignOut" type="button">Sign out</button></div></div>`, "account");
   $("#accSyncNow").onclick = async () => { $("#accSync").textContent = "Syncing…"; await syncNow("manual"); if ($("#accSync")) $("#accSync").textContent = syncLine(); };
@@ -1256,8 +1256,9 @@ function premiumModal() {
   const label = prem ? "You're Premium ⭐" : !u ? "Sign in to go Premium" : !c.checkoutUrl ? "Checkout opens soon" : `Go Premium${c.price ? ` · ${esc(c.price)}` : ""}`;
   openModal(`<div class="prem-card" data-k="premium"><div class="prem-badge">⭐ Premium</div><h2>WhereIsShe Premium</h2>
     <div class="prem-price">${c.price ? esc(c.price) : "Price coming soon"}</div>${c.billing ? `<div class="prem-billing">${esc(c.billing)}</div>` : ""}
+    <p class="prem-both">One Premium unlocks WhereIsShe and <a href="https://ranki.gg" target="_blank" rel="noopener">Ranki</a>.</p>
     <ul class="prem-list"><li><span>🚫</span>No ads: no banner and no ad after round 5</li><li><span>⚡</span>Priority review for your Feature me submissions</li>
-      <li><span>☁️</span>On every device you sign in on</li><li><span>❤️</span>Supports a small indie game</li></ul>
+      <li><span>🎮</span>The same subscription unlocks Ranki</li><li><span>☁️</span>On every device you sign in on</li><li><span>❤️</span>Supports a small indie game</li></ul>
     ${c.testMode ? `<p class="prem-test">🧪 Test mode: no real charge. Use the Lemon Squeezy test card 4242 4242 4242 4242.</p>` : ""}
     <button class="pill-btn primary prem-go" id="premGo" type="button" ${prem || (u && !c.checkoutUrl) ? "disabled" : ""}>${label}</button>
     <p class="prem-fine">Renews monthly until you cancel; cancel anytime from your Lemon Squeezy receipt email. Payments are handled by Lemon Squeezy, our merchant of record. <a href="terms.html" target="_blank" rel="noopener">Terms</a> · <a href="refund.html" target="_blank" rel="noopener">Refunds</a> · <a href="privacy.html" target="_blank" rel="noopener">Privacy</a></p></div>`, "premium");
@@ -1312,8 +1313,8 @@ function renderFeatureExtras() {
     : `To keep out spam, submissions need a free account with a verified email. Sign in with ${googleOn() ? "Google or " : ""}a one-time email link, no password.`;
   $("#ffGateBtn").textContent = u && !ok ? "Account" : "Log in to submit";
   if (ok) $("#ffSignedIn").innerHTML = `Signed in as <b>${esc(u.email)}</b>. We'll only use this email to reach you about your submission.`;
-  const up = premiumOn() ? (isPremium() ? `<div class="ff-prio">⭐ You're Premium: your submission gets <b>priority review</b>.</div>`
-    : `<div class="upsell"><div><b>⭐ Premium submitters get priority review</b><small>Plus no ads. ${[CONFIG.premium.price, CONFIG.premium.billing].filter(Boolean).map(esc).join(" · ")}</small></div><button class="pill-btn primary" type="button" data-go-premium>Go Premium</button></div>`) : "";
+  const up = premiumOn() ? (isPremium() ? `<div class="ff-prio">⭐ You're Premium: your submission gets <b>priority review</b>. The same subscription covers Ranki.</div>`
+    : `<div class="upsell"><div><b>⭐ Premium on WhereIsShe and Ranki</b><small>No ads and priority review here, plus Premium on Ranki. ${[CONFIG.premium.price, CONFIG.premium.billing].filter(Boolean).map(esc).join(" · ")}</small></div><button class="pill-btn primary" type="button" data-go-premium>Go Premium</button></div>`) : "";
   $$("#ffUpsell, #ffDoneUpsell, #ffGateUpsell").forEach(b => { b.innerHTML = b.id !== "ffUpsell" && isPremium() ? "" : up; });
   $$("[data-go-premium]").forEach(b => b.onclick = goPremium);
 }
