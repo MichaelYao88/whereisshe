@@ -5,7 +5,7 @@
    Photos and videos under sources/ and mark/media are never cached.
    These requests are not intercepted at all (no respondWith, no cache):
    non-GET, /ads.txt, Supabase, PostHog, and Google ad hosts. */
-const CACHE = "wis-shell-v1";
+const CACHE = "wis-shell-v2";
 
 const PRECACHE = [
   "/",
@@ -19,6 +19,7 @@ const PRECACHE = [
   "/schedule.html",
   "/mark.html",
   "/styles.css",
+  "/home.js",
   "/app.js",
   "/tiles.js",
   "/puzzles-data.js",

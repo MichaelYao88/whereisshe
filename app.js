@@ -257,7 +257,7 @@ function applyTheme() {
 mq.addEventListener?.("change", () => settings.theme === "system" && applyTheme());
 
 // ================================================================ state
-const state = { mode: "daily", dateKey: todayKey(), puzzle: null, game: null, pin: null, busy: false };   // mode: daily | archive | preview (v11: Practice removed)
+const state = { mode: "daily", dateKey: todayKey(), puzzle: null, game: null, pin: null, busy: false, pushHash: false };   // mode: home | daily | archive | preview
 const puzzleForDay = n => { const pool = dailyPool(); if (!pool.length) return null; return pool[((n % pool.length) + pool.length) % pool.length]; };
 // v9: the daily schedule is data (schedule.json -> window.WIS_SCHEDULE, edited with tools/schedule.py).
 // A date listed in "dates" plays that puzzle. Any other date uses "rotation" when that list is non-empty.
@@ -307,8 +307,16 @@ function savedFor(key, p) {
 const getResult = () => isPreview() ? previewStore[resultKey()] || null : savedFor(resultKey(), state.puzzle);
 const setResult = r => { if (isPreview()) { previewStore[resultKey()] = { ...r, id: state.puzzle.id }; return; } const all = load(LS.results, {}); all[resultKey()] = { ...r, id: state.puzzle.id, h: puzzleHash(state.puzzle), at: Date.now() }; save(LS.results, all); };
 const isToday = () => state.mode === "daily";
-function linkHash() { return isPreview() ? `#preview=${state.dateKey}` : `#d=${state.dateKey}`; }
-function setHash(h) { try { history.replaceState(null, "", h || location.pathname + location.search); } catch { location.hash = h; } }
+function linkHash() { if (state.mode === "home") return ""; return isPreview() ? `#preview=${state.dateKey}` : `#d=${state.dateKey}`; }
+function setHash(h, push) { const url = h || location.pathname + location.search; try { (push ? history.pushState : history.replaceState).call(history, null, "", url); } catch { location.hash = h || ""; } }
+function leavingHome() {
+  const home = $("#homeView"), forced = !!state.pushHash; state.pushHash = false;
+  if (!home) return forced;
+  const boot = document.documentElement.classList;
+  if (boot.contains("wis-boot-play") || boot.contains("wis-boot-archive") || boot.contains("wis-boot-optin")) return false;
+  if (home.classList.contains("hidden")) return forced;
+  return true;
+}
 const totalOf = g => g.rounds.reduce((s, r) => s + r.pts, 0);
 
 // ================================================================ map (Leaflet)
@@ -383,6 +391,7 @@ function renderDots() {
 }
 
 function showUnscheduled(key) {
+  state.pushHash = false;
   state.puzzle = null; state.game = null; state.busy = false; state.pin = null;
   const vid = $("#video"); try { vid.pause(); } catch {}
   $("#stage").classList.add("hidden"); $("#result").classList.add("hidden"); $(".under-card").classList.add("hidden");
@@ -396,10 +405,11 @@ function showUnscheduled(key) {
 }
 function openPuzzle(p) {
   if (!p) return showUnscheduled(state.dateKey);
+  const push = leavingHome();
   $("#emptyDay").classList.add("hidden"); $(".under-card").classList.remove("hidden");
   state.puzzle = p; state.busy = false; state.pin = null;
   showView("play"); renderHero(); $("#result").classList.add("hidden"); $("#stage").classList.remove("hidden");
-  setHash(linkHash());
+  setHash(linkHash(), push);
   const saved = getResult();
   state.game = saved ? { ...saved } : { rounds: [], cur: 0, done: false, adSeen: false };
   ensureMap();
@@ -412,6 +422,7 @@ function openPuzzle(p) {
     showRound(g.rounds.length, false);                     // next unguessed round (round 1 on a fresh game)
   }
   window.scrollTo({ top: 0 });
+  maybeWelcome();
 }
 function showRound(i, revealed) {
   const p = state.puzzle, g = state.game, r = p.rounds[i]; g.cur = i; state.pin = null;
@@ -766,12 +777,132 @@ async function doShare(text) {
 
 // ================================================================ views / navigation
 function showView(v) {
+  document.documentElement.classList.remove("wis-boot-play", "wis-boot-archive", "wis-boot-optin", "wis-boot-home");
+  const home = $("#homeView"); if (home) home.classList.toggle("hidden", v !== "home");
   $("#playView").classList.toggle("hidden", v !== "play"); $("#archiveView").classList.toggle("hidden", v !== "archive"); $("#optinView").classList.toggle("hidden", v !== "optin");
-  const tab = v === "optin" ? "" : v === "archive" ? "archive" : state.mode === "archive" ? "archive" : "today";
+  document.body.classList.toggle("mode-home", v === "home");
+  const tab = v === "optin" ? "" : (v === "archive" || (v === "play" && state.mode === "archive")) ? "archive" : "today";
   $$(".tab").forEach(b => b.classList.toggle("active", b.dataset.view === tab));
-  if (v !== "play") setDock("mini");      // never leave a fixed map overlay on top of another view
+  if (v !== "play") { try { $("#video").pause(); } catch {} setDock("mini"); }      // home leaves the document flow, so the map still fits the first screen
   if (v === "play") fitStage();
   if (v === "play" && map) setTimeout(() => map.invalidateSize(), 0);
+  if (v === "home") syncHomeMotion();
+}
+const HOME_TITLE = "WhereIsShe.gg · Play today's where-in-the-world puzzle";
+function fillHomeCard() {
+  const api = window.WISHome; if (!api || !$("#homePlay")) return;
+  const key = todayKey();
+  const copy = api.homeCardCopy(puzzleForDate(key), key, (SCHED && SCHED.epoch) || CONFIG.dailyEpoch);
+  $("#homeKind").textContent = copy.kind;
+  $("#homeNo").textContent = copy.no;
+  $("#homeWhen").textContent = copy.date;
+  $("#homeWho").textContent = copy.who;
+  const imgWrap = $("#homeAvatar"), img = $("#homeAvatarImg"), mono = $("#homeMono");
+  const initial = (copy.name || copy.handle || "?").replace(/^@/, "").slice(0, 1).toUpperCase();
+  if (mono) mono.textContent = initial || "?";
+  if (copy.avatar && img && imgWrap) {
+    img.alt = ""; img.src = copy.avatar; imgWrap.classList.remove("hidden"); if (mono) mono.classList.add("hidden");
+    img.onerror = () => { imgWrap.classList.add("hidden"); if (mono) mono.classList.remove("hidden"); };
+  } else { if (imgWrap) imgWrap.classList.add("hidden"); if (mono) mono.classList.remove("hidden"); }
+}
+function syncHomeMotion() {
+  const box = $("#homeHow"); if (!box) return;
+  let reduce = false;
+  try { reduce = matchMedia("(prefers-reduced-motion: reduce)").matches; } catch {}
+  try { if (new URLSearchParams(location.search).get("motion") === "reduce") reduce = true; } catch {}
+  box.classList.toggle("is-static", !!reduce);
+}
+function paintHomePremium() {
+  const card = $("#homePremium"); if (!card) return;
+  if (!premiumOn()) { card.classList.add("hidden"); return; }
+  card.classList.remove("hidden");
+  const on = isPremium();
+  $("#homePremiumBtn") && $("#homePremiumBtn").classList.toggle("hidden", on);
+  $("#homePremiumOn") && $("#homePremiumOn").classList.toggle("hidden", !on);
+}
+function goHome() {
+  if (!$("#homeView")) return goToday();
+  try { $("#video").pause(); } catch {}
+  state.mode = "home";
+  fillHomeCard(); showView("home"); setHash(""); paintHomePremium();
+  document.title = HOME_TITLE; window.scrollTo({ top: 0 });
+}
+function suggestAnonId() {
+  const cap = (window.WISHome && window.WISHome.LIMITS.anon_id) || 80;
+  try {
+    if (typeof posthog !== "undefined" && typeof posthog.get_distinct_id === "function") {
+      const id = posthog.get_distinct_id();
+      if (typeof id === "string" && id.trim()) return id.trim().slice(0, cap);
+    }
+  } catch {}
+  let id = ""; try { id = localStorage.getItem("wis.suggest.anon") || ""; } catch {}
+  if (!id) { id = Math.random().toString(36).slice(2) + Date.now().toString(36); try { localStorage.setItem("wis.suggest.anon", id); } catch {} }
+  return String(id).slice(0, cap);
+}
+function showSuggestError(message) {
+  const err = $("#suggestError"); if (!err) return;
+  err.textContent = message || ""; err.classList.toggle("hidden", !message);
+}
+function showSuggestThanks() {
+  showSuggestError("");
+  $("#suggestForm") && $("#suggestForm").classList.add("hidden");
+  $("#suggestThanks") && $("#suggestThanks").classList.remove("hidden");
+}
+function resetSuggestForm() {
+  const form = $("#suggestForm"); if (form) { form.reset(); form.classList.remove("hidden"); }
+  $("#suggestThanks") && $("#suggestThanks").classList.add("hidden");
+  showSuggestError("");
+  const btn = $("#suggestSend"); if (btn) btn.disabled = false;
+}
+async function sendFeatureSuggestion(row) {
+  const api = window.WISHome;
+  const base = String((CONFIG.backend && CONFIG.backend.supabaseUrl) || "").replace(/\/$/, "");
+  const key = CONFIG.backend && CONFIG.backend.anonKey;
+  if (!base || !key) { const err = new Error("missing"); err.kind = "missing"; throw err; }
+  const token = (Cloud.session && Cloud.session.access_token) || key;
+  const payload = {
+    handle: row.handle, note: row.note, email: row.email,
+    user_agent: (typeof navigator !== "undefined" && navigator.userAgent) ? String(navigator.userAgent).slice(0, (api && api.LIMITS.user_agent) || 240) : null,
+    anon_id: suggestAnonId()
+  };
+  let res;
+  try {
+    res = await fetch(base + "/rest/v1/feature_suggestions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: key, Authorization: "Bearer " + token, Prefer: "return=minimal" },
+      body: JSON.stringify(payload)
+    });
+  } catch { const err = new Error("network"); err.kind = "network"; throw err; }
+  if (res.ok) return;
+  let text = ""; try { text = await res.text(); } catch {}
+  const kind = api ? api.suggestionErrorKind(res.status, text) : "fail";
+  const err = new Error(kind); err.kind = kind; throw err;
+}
+function wireSuggestForm() {
+  const form = $("#suggestForm"); if (!form || form.dataset.wired) return;
+  form.dataset.wired = "1";
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const api = window.WISHome; if (!api) return;
+    const result = api.validateFeatureSuggestion({
+      handle: form.handle.value, note: form.note.value, email: form.email.value, company: form.company.value
+    });
+    if (!result.ok) { showSuggestError(result.message); const field = form.elements[result.field]; if (field && field.focus) field.focus(); return; }
+    if (result.spam) { showSuggestThanks(); return; }
+    const gate = api.suggestionRate(load("wis.suggest.v1", []), Date.now());
+    if (!gate.ok) { showSuggestError(api.suggestionErrorMessage("rate")); return; }
+    const btn = $("#suggestSend"); if (btn) btn.disabled = true; showSuggestError("");
+    try {
+      await sendFeatureSuggestion(result.row);
+      save("wis.suggest.v1", gate.stamps);
+      track("suggestion_submitted");
+      showSuggestThanks();
+    } catch (ex) {
+      if (btn) btn.disabled = false;
+      showSuggestError(api.suggestionErrorMessage(ex && ex.kind));
+    }
+  });
+  if ($("#suggestAnother")) $("#suggestAnother").onclick = resetSuggestForm;
 }
 function goToday() { state.mode = "daily"; state.dateKey = todayKey(); openPuzzle(puzzleForDate(state.dateKey)); }
 function goPreview(key) {   // any date, past or future; nothing is written to storage
@@ -892,6 +1023,11 @@ function countVisit() {   // one per browser session (reloads in the same tab do
   const n = (+load(LS.visits, 0) || 0) + 1; save(LS.visits, n); return n;
 }
 const welcomeDone = () => !!load(LS.welcome, null);
+function maybeWelcome() {
+  if (welcomeDone() || isPreview()) return;
+  const play = $("#playView"); if (!play || play.classList.contains("hidden")) return;
+  showWelcome();
+}
 function showWelcome() {
   $("#welSub").innerHTML = `Every day, 5 photos and clips from one trip somewhere on Earth.<br>Look for clues and guess where each one was taken.`;
   $("#welcome").classList.remove("hidden"); document.body.classList.add("welcome-open"); setTimeout(() => $("#welSoundOn").focus(), 50);
@@ -1152,6 +1288,7 @@ function applyPremium() { setTimeout(fitStage, 0);
   const ad = $("#adTop");
   if (on && ad) { adTopNode = ad; ad.remove(); }                                   // Premium: the ad slot is removed, not just hidden
   else if (!on && !ad && adTopNode) { $("#topbar").after(adTopNode); }
+  paintHomePremium();
 }
 function checkoutUrl() {
   const u = new URL(CONFIG.premium.checkoutUrl, location.href);
@@ -1206,6 +1343,7 @@ function renderInterstitialAd() {
 
 // ---- account UI
 function renderAccountUI() {
+  paintHomePremium();
   const b = $("#accountBtn"); if (!b) return;
   b.classList.toggle("hidden", !accountsOn());
   if (!accountsOn()) return;
@@ -1424,7 +1562,14 @@ $("#themeBtn").onclick = () => { settings.theme = effectiveTheme() === "dark" ? 
 $("#modal").addEventListener("click", e => { if (e.target.id === "modal") closeModal(); });
 $("#aboutLink").onclick = e => { e.preventDefault(); aboutModal(); };
 $("#removeLink").onclick = e => { e.preventDefault(); removalModal(); };
-$("#homeLink").onclick = e => { e.preventDefault(); goToday(); };
+$("#homeLink").onclick = e => { e.preventDefault(); goHome(); };
+if ($("#homePlay")) $("#homePlay").addEventListener("click", e => {
+  if (e.target.closest("a")) return;
+  track("home_play_clicked"); state.pushHash = true; goToday();
+});
+if ($("#homePremiumBtn")) $("#homePremiumBtn").onclick = e => { e.preventDefault(); track("home_premium_clicked"); goPremium(); };
+wireSuggestForm();
+try { matchMedia("(prefers-reduced-motion: reduce)").addEventListener?.("change", syncHomeMotion); } catch {}
 $("#expandBtn").onclick = e => { e.stopPropagation(); openFullMap(); };
 $("#miniCatch").onclick = e => { e.stopPropagation(); openFullMap(); };     // mobile: first tap opens the full-screen map
 $("#closeMapBtn").onclick = e => { e.stopPropagation(); closeFullMap(); };
@@ -1466,10 +1611,10 @@ function route() {
   if (h.startsWith("#optin")) return goOptin();
   if (d) return goDate(d[1]);
   if (p) return goLegacyPuzzle(decodeURIComponent(p[1]));
-  goToday();
+  if (h === "#today" || h === "#play") return goToday();
+  goHome();
 }
 window.addEventListener("hashchange", () => { if (location.hash !== linkHash()) route(); });
 route(); fitStage(); setSoundBtn();
-if (!welcomeDone() && !isPreview() && !location.hash.startsWith("#optin")) showWelcome();
 cloudInit();   // v11: no-op unless CONFIG.backend.enabled
 })();

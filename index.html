@@ -15,35 +15,43 @@
   posthog.register({ site: 'whereisshe' });
 </script>
 
-<title>WhereIsShe.gg · A daily where-in-the-world game</title>
-<meta name="description" content="WhereIsShe.gg is a free daily geography game. Five photos or short clips, one world map. Drop a pin and score up to 25,000. A new puzzle every day.">
+<title>WhereIsShe.gg · Play today's where-in-the-world puzzle</title>
+<meta name="description" content="Play today's WhereIsShe puzzle. Five photos or short clips, one world map. Drop a pin and score up to 25,000. A new traveler every day.">
 <meta name="color-scheme" content="light dark">
 <link rel="canonical" href="https://whereisshe.gg/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="WhereIsShe">
 <meta property="og:url" content="https://whereisshe.gg/">
-<meta property="og:title" content="WhereIsShe.gg · A daily where-in-the-world game">
-<meta property="og:description" content="Five photos, one world map. Drop a pin and score up to 25,000. A new WhereIsShe puzzle every day.">
+<meta property="og:title" content="WhereIsShe.gg · Play today's where-in-the-world puzzle">
+<meta property="og:description" content="Play today's puzzle. Five photos or short clips, one world map. Drop a pin and score up to 25,000.">
 <meta property="og:image" content="https://whereisshe.gg/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Where Is She . GG, a daily where-in-the-world game">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="WhereIsShe.gg · A daily where-in-the-world game">
-<meta name="twitter:description" content="Five photos, one world map. Drop a pin and score up to 25,000. A new puzzle every day.">
+<meta name="twitter:title" content="WhereIsShe.gg · Play today's where-in-the-world puzzle">
+<meta name="twitter:description" content="Play today's puzzle. Five photos or short clips, one world map. Drop a pin and score up to 25,000.">
 <meta name="twitter:image" content="https://whereisshe.gg/og.png">
 <meta name="twitter:image:alt" content="Where Is She . GG, a daily where-in-the-world game">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@graph":[{"@type":"WebSite","name":"WhereIsShe","alternateName":["Where Is She . GG","WhereIsShe.gg"],"url":"https://whereisshe.gg/"},{"@type":"WebApplication","name":"WhereIsShe","url":"https://whereisshe.gg/","applicationCategory":"GameApplication","operatingSystem":"Web","browserRequirements":"Requires JavaScript","description":"A free daily geography game. Five photos or short clips, one world map. Drop a pin and score up to 25,000. A new puzzle every day.","image":"https://whereisshe.gg/og.png","isAccessibleForFree":true}]}
+{"@context":"https://schema.org","@graph":[{"@type":"WebSite","name":"WhereIsShe","alternateName":["Where Is She . GG","WhereIsShe.gg"],"url":"https://whereisshe.gg/"},{"@type":"WebApplication","name":"WhereIsShe","url":"https://whereisshe.gg/","applicationCategory":"GameApplication","operatingSystem":"Web","browserRequirements":"Requires JavaScript","description":"Play today's where-in-the-world puzzle. Five photos or short clips, one world map. Drop a pin and score up to 25,000.","image":"https://whereisshe.gg/og.png","isAccessibleForFree":true}]}
 </script>
 <script>
   // Apply the saved theme before first paint (no flash). No saved choice defaults to dark.
   (function(){try{var t=JSON.parse(localStorage.getItem("wis.settings.v1")||"{}").theme||"dark";
   if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t;}catch(e){}})();
+  // Shared links paint the game, archive, or opt-in before app.js routes. A bare visit paints home.
+  (function(){try{
+    var h=location.hash||"", q=new URLSearchParams(location.search), root=document.documentElement;
+    if(h.indexOf("#archive")===0) root.classList.add("wis-boot-archive");
+    else if(h.indexOf("#optin")===0) root.classList.add("wis-boot-optin");
+    else if((q.get("preview")&&q.get("preview").trim())||/^#(today|play|d=|p=)/.test(h)||/preview=/.test(h)) root.classList.add("wis-boot-play");
+    else root.classList.add("wis-boot-home");
+  }catch(e){}})();
 </script>
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=3148c28028">
 <link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css?v=3148c28028">
-<link rel="stylesheet" href="styles.css?v=3148c28028">
+<link rel="stylesheet" href="styles.css?v=3148c28028h">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5196178239625142"
      crossorigin="anonymous"></script>
 <link rel="manifest" href="/manifest.webmanifest">
@@ -78,8 +86,131 @@
 <!-- Top banner stays a visual placeholder. The live Display unit is filled from CONFIG.ads after round 5. -->
 <div class="ad-banner" id="adTop"><span class="ad-tag">Ad</span><div class="ad-fill">Banner ad placeholder · 320×50 / 728×90</div></div>
 <main class="wrap">
+  <!-- ======== HOME ======== -->
+  <section id="homeView">
+    <article class="hero home-play" id="homePlay">
+      <div class="hero-top">
+        <span class="hero-brand">WhereIsShe</span>
+        <span class="hero-kind" id="homeKind">Today's traveler</span>
+        <span id="homeNo">Today</span>
+      </div>
+      <h1>Play today's puzzle</h1>
+      <div class="home-person">
+        <div class="home-mono" id="homeMono" aria-hidden="true"></div>
+        <div class="home-av hidden" id="homeAvatar"><img id="homeAvatarImg" alt="" width="56" height="56"></div>
+        <div class="home-person-copy">
+          <p class="home-name" id="homeWho"></p>
+          <p class="hero-date" id="homeWhen">A new traveler every day</p>
+        </div>
+      </div>
+      <button type="button" class="pill-btn outline" id="homePlayBtn">Play today's puzzle</button>
+    </article>
+
+    <aside class="home-premium" id="homePremium">
+      <button type="button" class="home-premium-btn" id="homePremiumBtn"><span class="home-premium-lead">Go Premium:</span> no ads, full archive, and unlocks Ranki too.</button>
+      <p class="home-premium-on hidden" id="homePremiumOn">You're Premium. No ads, and Ranki is included.</p>
+    </aside>
+
+    <section class="home-how" id="homeHow" aria-labelledby="homeHowTitle">
+      <h2 class="section-title" id="homeHowTitle"><span class="hl">How to play</span></h2>
+      <p class="section-sub">A sample round, not today's puzzle. Today's traveler works the same way.</p>
+      <ol class="how-steps">
+        <li class="how-step">
+          <h3>Step 1</h3>
+          <p>Watch the clip.</p>
+          <div class="mini mini-step1" aria-hidden="true">
+            <div class="mini-kicker"><span>Round 1 / 5</span><span>Sample</span></div>
+            <div class="mini-stage">
+              <svg class="mini-clip" viewBox="0 0 280 148" focusable="false">
+                <rect width="280" height="148" fill="#7ec4dc"/>
+                <circle class="mini-sun" cx="214" cy="36" r="16" fill="#ffe48a"/>
+                <path d="M0 96 C 36 70, 70 78, 108 96 S 176 128, 220 100 S 260 78, 280 88 L280 148 L0 148 Z" fill="#3d9a62"/>
+                <path d="M18 148 L58 78 L98 148 Z" fill="#2f7a4c"/>
+                <path d="M78 148 L128 62 L178 148 Z" fill="#26724a"/>
+              </svg>
+              <span class="mini-play">▶</span>
+            </div>
+            <span class="mini-finger finger-1">👆</span>
+          </div>
+        </li>
+        <li class="how-step">
+          <h3>Step 2</h3>
+          <p>Drop a pin on the map.</p>
+          <div class="mini mini-step2" aria-hidden="true">
+            <div class="mini-kicker"><span>Round 1 / 5</span><span>Sample</span></div>
+            <div class="mini-map">
+              <svg viewBox="0 0 280 140" focusable="false">
+                <rect width="280" height="140" fill="#d5e4ea"/>
+                <path d="M0 28H280M0 70H280M0 112H280M46 0V140M110 0V140M174 0V140M238 0V140" stroke="#ffffff" stroke-width="2"/>
+                <path d="M24 96 C 70 60, 120 110, 168 78 S 240 40, 280 64 L280 140 L0 140 Z" fill="#b7d7c4"/>
+                <path d="M0 40 C 40 24, 80 48, 120 36 S 200 16, 280 32 L280 0 L0 0 Z" fill="#c5d7ef"/>
+              </svg>
+              <span class="mini-pin"></span>
+            </div>
+            <span class="mini-finger finger-2">👆</span>
+          </div>
+        </li>
+        <li class="how-step">
+          <h3>Step 3</h3>
+          <p>See the score and the distance.</p>
+          <div class="mini mini-step3" aria-hidden="true">
+            <div class="mini-kicker"><span>Round 1 / 5</span><span>Sample</span></div>
+            <div class="mini-score"><b>4,820</b><span>/ 5,000</span></div>
+            <p class="mini-dist">48 km away</p>
+          </div>
+        </li>
+        <li class="how-step how-step-next">
+          <h3>Step 4</h3>
+          <p>Then the next round. The game credits the featured person with a tappable Instagram link. This sample is not today's puzzle.</p>
+          <div class="mini mini-step4" aria-hidden="true">
+            <div class="mini-kicker"><span>Round 1 / 5</span><span>Sample</span></div>
+            <span class="pill-btn outline mini-next">Next round →</span>
+          </div>
+          <a class="mini-source" href="https://www.instagram.com/" target="_blank" rel="noopener">
+            <span class="mini-source-line">Instagram ↗</span>
+            <span class="mini-open-wrap">
+              <span class="mini-opened">
+                <b>Featured person</b>
+                <span>This is how the game credits them.</span>
+                <span class="mini-url">instagram.com</span>
+              </span>
+            </span>
+          </a>
+          <span class="mini-finger finger-4" aria-hidden="true">👆</span>
+        </li>
+      </ol>
+    </section>
+
+    <section class="home-suggest" id="homeSuggest" aria-labelledby="homeSuggestTitle">
+      <h2 class="section-title" id="homeSuggestTitle"><span class="hl">Suggest who to feature</span></h2>
+      <p class="section-sub">An Instagram handle is enough. A note and an email are optional. If it's you, use <a href="#optin">Feature me</a>.</p>
+      <div class="submit-card">
+        <form id="suggestForm" class="puzzle-form" novalidate>
+          <label for="suggestHandle">Instagram handle <span class="req">Required</span></label>
+          <input id="suggestHandle" name="handle" type="text" maxlength="31" required placeholder="@handle" autocomplete="off" spellcheck="false">
+          <label for="suggestNote">Note <span class="opt">Optional</span></label>
+          <textarea id="suggestNote" name="note" maxlength="500" placeholder="Why should we feature them?"></textarea>
+          <label for="suggestEmail">Email <span class="opt">Optional</span></label>
+          <input id="suggestEmail" name="email" type="email" maxlength="120" placeholder="you@example.com" autocomplete="email">
+          <div class="hp" aria-hidden="true">
+            <label for="suggestCompany">Company</label>
+            <input id="suggestCompany" name="company" type="text" tabindex="-1" autocomplete="off">
+          </div>
+          <p class="form-error hidden" id="suggestError" role="alert"></p>
+          <button type="submit" class="pill-btn primary" id="suggestSend">Send suggestion</button>
+          <p class="form-note">We read these by hand. Don't include anything private.</p>
+        </form>
+        <div class="puzzle-thanks hidden" id="suggestThanks" role="status">
+          <h3>Thanks. We'll read it.</h3>
+          <p>Your suggestion is in. It may take a while before a day uses it.</p>
+          <button type="button" class="pill-btn ghost" id="suggestAnother">Suggest someone else</button>
+        </div>
+      </div>
+    </section>
+  </section>
+
   <!-- ======== PLAY VIEW ======== -->
-  <section id="playView">
+  <section id="playView" class="hidden">
     <article class="hero" id="hero">
       <div class="hero-top"><a class="hero-brand" href="#" id="homeLink" aria-label="WhereIsShe home">WhereIsShe</a><span class="hero-kind" id="heroKind">Round 1 / 5</span><span id="heroNo">No. 001</span></div>
       <h1 id="question">WhereIsShe</h1>
@@ -302,6 +433,7 @@
 <script src="tiles.js?v=3148c28028"></script>
 <script src="vendor/xlsx.full.min.js?v=3148c28028"></script>
 <script src="puzzles-data.js?v=3148c28028"></script>
-<script src="app.js?v=3148c28028"></script>
+<script src="home.js?v=3148c28028h"></script>
+<script src="app.js?v=3148c28028h"></script>
 </body>
 </html>
