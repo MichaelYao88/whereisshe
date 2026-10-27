@@ -3,3 +3,7 @@ project_id = "xhaduveumhtikwoekxdi"
 # The function checks the service-role bearer (or CRON_SECRET) itself.
 [functions.community-snapshot]
 verify_jwt = false
+
+# Lemon Squeezy sends no Supabase JWT. The function checks the HMAC signature.
+[functions.lemonsqueezy-webhook]
+verify_jwt = false
