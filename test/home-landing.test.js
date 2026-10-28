@@ -162,8 +162,24 @@ test("the page wires the three home events and leaves checkout alone", () => {
   assert.match(html, /href="#optin"/);
   const card = sliceBetween(app, "function fillHomeCard", "function syncHomeMotion");
   assert.doesNotMatch(card, /poster|place_name|\.lat|\.lng|rounds/);
-  assert.match(sw, /wis-shell-v3/);
+  assert.match(sw, /wis-shell-v4/);
   assert.match(sw, /\/home\.js/);
+});
+
+test("the home page has no under-construction copy for AdSense review", () => {
+  assert.match(html, /© 2026 whereisshe\.gg · Photos used with permission/);
+  assert.doesNotMatch(html, /whereisshe\.gg prototype/);
+  assert.match(html, /id="communityBadge">Community</);
+  assert.doesNotMatch(html, /Coming soon/);
+  assert.doesNotMatch(html, /Banner ad placeholder/);
+  assert.doesNotMatch(html, /Interstitial ad placeholder/);
+  assert.doesNotMatch(html, /<!--(?:(?!-->)[\s\S])*placeholder(?:(?!-->)[\s\S])*-->/i);
+  assert.match(html, /ca-pub-5196178239625142/);
+  assert.match(html, /posthog\.init\(/);
+  assert.match(sw, /const CACHE = "wis-shell-v4"/);
+  assert.doesNotMatch(sw, /wis-shell-v3/);
+  assert.match(app, /ca-pub-5196178239625142/);
+  assert.match(app, /7982022596/);
 });
 
 test("the suggestions migration is insert-only and rate-limited in private", () => {
