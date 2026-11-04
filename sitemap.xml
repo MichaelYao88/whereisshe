@@ -1,9 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://whereisshe.gg/</loc></url>
-  <url><loc>https://whereisshe.gg/about.html</loc></url>
-  <url><loc>https://whereisshe.gg/how-to-play.html</loc></url>
-  <url><loc>https://whereisshe.gg/terms.html</loc></url>
-  <url><loc>https://whereisshe.gg/privacy.html</loc></url>
-  <url><loc>https://whereisshe.gg/refund.html</loc></url>
+  <url><loc>https://whereisshe.gg/</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://whereisshe.gg/about.html</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://whereisshe.gg/how-to-play.html</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://whereisshe.gg/contact.html</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://whereisshe.gg/guides/</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://whereisshe.gg/guides/scoring.html</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://whereisshe.gg/guides/reading-clues.html</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://whereisshe.gg/guides/featured-people.html</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://whereisshe.gg/guides/daily-and-archive.html</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://whereisshe.gg/guides/beginner-clues.html</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://whereisshe.gg/guides/cities-and-countryside.html</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://whereisshe.gg/guides/sharing-and-streaks.html</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://whereisshe.gg/guides/map-and-distance.html</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://whereisshe.gg/terms.html</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://whereisshe.gg/privacy.html</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://whereisshe.gg/refund.html</loc><lastmod>2026-11-04</lastmod></url>
 </urlset>

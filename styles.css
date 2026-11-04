@@ -32,6 +32,9 @@ html.wis-boot-play #playView{display:block!important}
 html.wis-boot-archive #archiveView{display:block!important}
 html.wis-boot-optin #optinView{display:block!important}
 html.wis-boot-home #adTop,body.mode-home #adTop{display:none!important}
+/* Ads only beside a loaded puzzle. ads-live is set in app.js once a real day is on screen. */
+html:not(.ads-live) #adTop{display:none!important}
+html.ads-held #interstitial,html.ads-held .inter-ph{display:none!important}
 
 /* ---------- floating corner controls ---------- */
 .round-btn{width:40px;height:40px;border-radius:50%;border:0;background:var(--surface2);color:var(--ink);display:grid;place-items:center;
@@ -220,7 +223,13 @@ html.wis-boot-home #adTop,body.mode-home #adTop{display:none!important}
 .card-box{background:var(--surface2);border-radius:20px;box-shadow:var(--shadow-soft);padding:20px}
 .empty-day{margin-top:14px}
 .empty-day h2{margin:0 0 8px;font-size:22px;letter-spacing:-.03em}
+.empty-day h3{margin:16px 0 6px;font-size:16px;letter-spacing:-.02em}
 .empty-day p{margin:0;color:var(--muted);font-size:15px;line-height:1.45}
+.empty-day p+p{margin-top:10px}
+.empty-day .empty-archive{margin-top:14px}
+.empty-links{margin:0;padding-left:18px}
+.empty-links a{font-weight:700}
+a.pill-btn{display:inline-block;text-decoration:none;text-align:center}
 .optin-form{display:flex;flex-direction:column;gap:14px}
 .optin-form label{display:flex;flex-direction:column;gap:6px;font-weight:700;font-size:13px}
 .optin-form label small,.optin-form .opt{font-weight:500;color:var(--muted);font-size:12px}
@@ -593,6 +602,11 @@ body.welcome-open{overflow:hidden}
 .home-name:empty{display:none}
 .home-play .hero-date{margin-top:4px}
 .home-play .pill-btn{display:block;width:100%;margin-top:18px;text-align:center}
+.home-intro{margin:16px 0 0;background:var(--surface2);color:var(--ink);border-radius:22px;box-shadow:var(--shadow-soft);padding:16px 18px 8px}
+.home-intro h2{margin:0 0 8px;font-size:18px;letter-spacing:-.03em;text-align:left}
+.home-intro p{margin:0 0 12px;font-size:15px;line-height:1.55;font-weight:500}
+.home-guides{list-style:none;display:flex;flex-wrap:wrap;gap:8px 14px;margin:0 0 10px;padding:0}
+.home-guides a{font-weight:700;font-size:14px}
 .home-premium{margin:14px 0 0}
 button.home-premium-btn{display:block;width:100%;text-align:left;background:var(--surface2);border:0;border-radius:18px;box-shadow:var(--shadow-soft);padding:14px 16px;color:var(--ink);font-size:14.5px;font-weight:700;line-height:1.4;letter-spacing:-.015em;cursor:pointer}
 button.home-premium-btn:hover{background:rgba(var(--ink-rgb),.03)}

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  // PostHog (whereisshe). Autocapture and session replay stay off so typed text is never sent.
+  !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+  posthog.init('phc_BFzhf5CAX9wKcoGBVXnX3uPb4T2LAjeD3ZfBGiHWvFxc', {
+    api_host: 'https://us.i.posthog.com',
+    person_profiles: 'identified_only',
+    autocapture: false,
+    disable_session_recording: true
+  });
+  posthog.register({ site: 'whereisshe' });
+</script>
+
+<title>Daily puzzles and the archive · whereisshe.gg</title>
+<link rel="canonical" href="https://whereisshe.gg/guides/daily-and-archive.html">
+<meta name="description" content="How whereisshe.gg publishes a daily puzzle, what Nothing scheduled means, and how the archive keeps a score without changing your streak.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="whereisshe.gg">
+<meta property="og:url" content="https://whereisshe.gg/guides/daily-and-archive.html">
+<meta property="og:title" content="How daily puzzles and the archive work">
+<meta property="og:description" content="How whereisshe.gg publishes a daily puzzle, what Nothing scheduled means, and how the archive keeps a score without changing your streak.">
+<meta property="og:image" content="https://whereisshe.gg/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="How daily puzzles and the archive work">
+<meta name="twitter:description" content="How whereisshe.gg publishes a daily puzzle, what Nothing scheduled means, and how the archive keeps a score without changing your streak.">
+<meta name="twitter:image" content="https://whereisshe.gg/og.png">
+<meta name="color-scheme" content="light dark">
+<script>
+  (function(){try{var t=JSON.parse(localStorage.getItem("wis.settings.v1")||"{}").theme||"dark";
+  if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="dark";}})();
+</script>
+<style>
+  :root,[data-theme="dark"]{color-scheme:dark;--bg:#18181A;--card:#232325;--ink:#ECEAE4;--muted:#9C9A94;--brand:#7d93ff;--line:rgba(236,234,228,.12)}
+  [data-theme="light"]{color-scheme:light;--bg:#F5F3EE;--card:#fff;--ink:#151821;--muted:#6C6B67;--brand:#3B5BFF;--line:rgba(21,24,33,.1)}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  main{max-width:760px;margin:0 auto;padding:28px 20px 60px}
+  .card{background:var(--card);border-radius:20px;padding:26px 26px 20px;border:1px solid var(--line)}
+  h1{font-size:30px;letter-spacing:-.03em;margin:0 0 4px} h2{font-size:18px;margin:26px 0 6px}
+  .upd{color:var(--muted);font-size:13px;margin:0 0 18px} a{color:var(--brand)} li{margin:4px 0}
+  nav{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;margin:0 0 16px} nav a{text-decoration:none;font-weight:700}
+  .muted{color:var(--muted);font-size:14px}
+  .guide-list{padding-left:18px} .guide-list a{font-weight:700}
+  footer{margin-top:8px}
+</style>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="theme-color" content="#18181A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="whereisshe.gg">
+<script src="/pwa.js?v=6db3674490"></script>
+</head><body><main>
+<nav><a href="../">← Play whereisshe.gg</a><a href="../guides/">Guides</a><a href="../about.html">About</a><a href="../how-to-play.html">How to play</a><a href="../contact.html">Contact</a><a href="../terms.html">Terms</a><a href="../privacy.html">Privacy</a><a href="../refund.html">Refunds</a></nav>
+<div class="card">
+<h1>How the daily and the archive work</h1>
+<p class="upd">What Today's puzzle is, what the archive is, and why some dates say nothing is scheduled.</p>
+<h2>One calendar date, one puzzle, if a day is pinned</h2>
+<p>whereisshe.gg is a daily game. The date comes from your device's local calendar, and the day changes at local midnight. Daily No. 001 is 21 October 2026. Each later calendar date has the next number, counting forward from that first day. When a date has a puzzle, everyone playing that date gets the same five rounds, so a shared score is a comparison of guesses and not a comparison of different photos.</p>
+<p>A date plays a puzzle only when that date is pinned on the schedule to a specific day code, such as she-001. The schedule can also carry a rotation, a list of puzzles used for dates that are not pinned one by one. If that rotation list is empty, an unpinned date does not borrow an older puzzle. The play screen then says nothing is scheduled for that date. That is a real gap in the calendar, not a broken page. The photos and the map are simply not there until a day is pinned.</p>
+<h2>What you can do on an empty day</h2>
+<p>On an empty day the game hides the ad slots and points you at the archive and the guides. Open Archive in the top bar, or use the archive link on that screen. The archive lists today and every earlier date back to 21 October 2026. It does not list tomorrow or any later date. A link to a future daily is refused, so an unpublished day cannot be opened early. Dates before the first daily are not part of the list.</p>
+<p>If you open a past date that was never pinned, you get the same nothing-scheduled note for that date. Scroll to a row that shows a day code and Play. Those rows are the days that actually have five rounds.</p>
+<h2>Archive scores stay on that day</h2>
+<p>Playing an archive day uses the same five rounds, the same map, and the same <a href="scoring.html">scoring curve</a> as the daily did. Your pin, your distance, and your total are saved in this browser for that puzzle. They are not added to the daily streak, and they do not count as finishing today. The streak is only for the daily you finish on today's date. Finish today, and come back tomorrow, and the streak continues. Skip a calendar day and the next daily you finish starts the streak again. Your current streak still shows if your last daily finish was today or yesterday.</p>
+<p>You can leave in the middle of a day. The browser keeps the rounds you already guessed, as long as the puzzle itself has not changed. A saved game is tied to the photos and the answer locations. If those change, the old guesses are not reused, so you are not scored against a different map. Preview links used while a day is being prepared do not write that progress into your saved games or your streak.</p>
+<h2>Home, Today, and Archive</h2>
+<p>Today, in the top bar, opens the daily for your local date. Archive opens the list. If Today has nothing scheduled, you have not missed a hidden puzzle. Use the archive for any earlier pinned day, and the <a href="./">guides</a> for the rules in writing. Sharing a result is covered in <a href="sharing-and-streaks.html">sharing and streaks</a>.</p>
+</div>
+<footer><p class="muted"><a href="https://whereisshe.gg/">whereisshe.gg</a> is a small independent game. · <a href="../guides/">Guides</a> · <a href="../contact.html">Contact</a> · <a href="../about.html">About</a> · <a href="../how-to-play.html">How to play</a> · <a href="../terms.html">Terms</a> · <a href="../privacy.html">Privacy</a> · <a href="../refund.html">Refunds</a></p></footer>
+</main></body></html>

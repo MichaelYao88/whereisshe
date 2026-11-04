@@ -105,6 +105,20 @@
       <button type="button" class="pill-btn outline" id="homePlayBtn">Play today's puzzle</button>
     </article>
 
+    <section class="home-intro" id="homeIntro" aria-labelledby="homeIntroTitle">
+      <h2 id="homeIntroTitle">What whereisshe.gg is</h2>
+      <p>whereisshe.gg is a free daily geography game. On a day that has a puzzle, you get five photos or short clips from one trip. You watch each clip, look for clues in signs, streets, plants, and buildings, and drop a pin on a world map. Points come from how close that pin is to the real spot: up to 5,000 a round, and 25,000 if every round is within 30 kilometres. Everyone plays the same five rounds on a published day, so a shared result compares guesses rather than different photos.</p>
+      <p>The person in the clips agreed to be featured. The pin marks where a photo was taken, never a home, and the name and Instagram credit stay hidden until the last round. If today has nothing scheduled, the archive still has earlier days. The <a href="guides/">guides</a> explain scoring, clues, credits, and how a daily differs from an archive play. Optional ads help pay for the free game, and Premium removes those ads on whereisshe.gg and on ranki.gg.</p>
+      <ul class="home-guides">
+        <li><a href="guides/scoring.html">Scoring</a></li>
+        <li><a href="guides/reading-clues.html">Reading clues</a></li>
+        <li><a href="guides/featured-people.html">Featured people</a></li>
+        <li><a href="guides/daily-and-archive.html">Daily and archive</a></li>
+        <li><a href="guides/beginner-clues.html">Beginner clues</a></li>
+        <li><a href="guides/cities-and-countryside.html">Cities and countryside</a></li>
+      </ul>
+    </section>
+
     <aside class="home-premium" id="homePremium">
       <button type="button" class="home-premium-btn" id="homePremiumBtn"><span class="home-premium-lead">Go Premium:</span> no ads, full archive, and unlocks ranki.gg too.</button>
       <p class="home-premium-on hidden" id="homePremiumOn">You're Premium. No ads, and ranki.gg is included.</p>
@@ -261,6 +275,16 @@
     <section class="card-box empty-day hidden" id="emptyDay" aria-live="polite">
       <h2>Nothing scheduled</h2>
       <p id="emptyDayText"></p>
+      <p>There is no puzzle pinned for this date, so there is no map and no clip to guess. You can play any earlier day that does have five rounds. Archive play keeps a score and does not change your streak.</p>
+      <p><a class="pill-btn primary empty-archive" id="emptyArchive" href="#archive">Play the archive</a></p>
+      <h3>While you wait</h3>
+      <ul class="empty-links">
+        <li><a href="guides/">All guides</a></li>
+        <li><a href="guides/scoring.html">How scoring works</a></li>
+        <li><a href="guides/reading-clues.html">Reading location clues</a></li>
+        <li><a href="guides/daily-and-archive.html">Daily puzzles and the archive</a></li>
+        <li><a href="how-to-play.html">How to play</a></li>
+      </ul>
     </section>
     <div class="under-card"><button class="link-btn" id="shareChallengeTop">Share today's puzzle ↗</button></div>
 
@@ -366,7 +390,7 @@
 
 <footer class="foot">
   <a href="#optin" id="optinLink">Feature me</a> · <a href="#" id="removeLink">Remove my photos</a> · <a href="#" id="clearLink">Clear my game data</a><br>
-  <a href="about.html">About</a> · <a href="how-to-play.html">How to play</a> · <a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a> · <a href="refund.html">Refunds</a><br>
+  <a href="about.html">About</a> · <a href="guides/">Guides</a> · <a href="how-to-play.html">How to play</a> · <a href="contact.html">Contact</a> · <a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a> · <a href="refund.html">Refunds</a><br>
   © 2026 whereisshe.gg · Photos used with permission (<a href="#" id="aboutLink">about</a>) · Map © <a href="https://openfreemap.org">OpenFreeMap</a> · © OpenStreetMap contributors
 </footer>
 

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  // PostHog (whereisshe). Autocapture and session replay stay off so typed text is never sent.
+  !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+  posthog.init('phc_BFzhf5CAX9wKcoGBVXnX3uPb4T2LAjeD3ZfBGiHWvFxc', {
+    api_host: 'https://us.i.posthog.com',
+    person_profiles: 'identified_only',
+    autocapture: false,
+    disable_session_recording: true
+  });
+  posthog.register({ site: 'whereisshe' });
+</script>
+
+<title>How featured people are chosen and credited · whereisshe.gg</title>
+<link rel="canonical" href="https://whereisshe.gg/guides/featured-people.html">
+<meta name="description" content="How whereisshe.gg chooses featured travelers: opt-in, hand review, approval before a day goes live, and credit only after the last round.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="whereisshe.gg">
+<meta property="og:url" content="https://whereisshe.gg/guides/featured-people.html">
+<meta property="og:title" content="How featured people are chosen and credited">
+<meta property="og:description" content="How whereisshe.gg chooses featured travelers: opt-in, hand review, approval before a day goes live, and credit only after the last round.">
+<meta property="og:image" content="https://whereisshe.gg/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="How featured people are chosen and credited">
+<meta name="twitter:description" content="How whereisshe.gg chooses featured travelers: opt-in, hand review, approval before a day goes live, and credit only after the last round.">
+<meta name="twitter:image" content="https://whereisshe.gg/og.png">
+<meta name="color-scheme" content="light dark">
+<script>
+  (function(){try{var t=JSON.parse(localStorage.getItem("wis.settings.v1")||"{}").theme||"dark";
+  if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="dark";}})();
+</script>
+<style>
+  :root,[data-theme="dark"]{color-scheme:dark;--bg:#18181A;--card:#232325;--ink:#ECEAE4;--muted:#9C9A94;--brand:#7d93ff;--line:rgba(236,234,228,.12)}
+  [data-theme="light"]{color-scheme:light;--bg:#F5F3EE;--card:#fff;--ink:#151821;--muted:#6C6B67;--brand:#3B5BFF;--line:rgba(21,24,33,.1)}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  main{max-width:760px;margin:0 auto;padding:28px 20px 60px}
+  .card{background:var(--card);border-radius:20px;padding:26px 26px 20px;border:1px solid var(--line)}
+  h1{font-size:30px;letter-spacing:-.03em;margin:0 0 4px} h2{font-size:18px;margin:26px 0 6px}
+  .upd{color:var(--muted);font-size:13px;margin:0 0 18px} a{color:var(--brand)} li{margin:4px 0}
+  nav{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;margin:0 0 16px} nav a{text-decoration:none;font-weight:700}
+  .muted{color:var(--muted);font-size:14px}
+  .guide-list{padding-left:18px} .guide-list a{font-weight:700}
+  footer{margin-top:8px}
+</style>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="theme-color" content="#18181A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="whereisshe.gg">
+<script src="/pwa.js?v=6db3674490"></script>
+</head><body><main>
+<nav><a href="../">← Play whereisshe.gg</a><a href="../guides/">Guides</a><a href="../about.html">About</a><a href="../how-to-play.html">How to play</a><a href="../contact.html">Contact</a><a href="../terms.html">Terms</a><a href="../privacy.html">Privacy</a><a href="../refund.html">Refunds</a></nav>
+<div class="card">
+<h1>How featured people are chosen and credited</h1>
+<p class="upd">Who appears on whereisshe.gg, and when you learn their name.</p>
+<h2>Only people who asked to be here</h2>
+<p>Every person featured on whereisshe.gg chose to be in the game. They use Feature me, or they contact the same address, and they confirm three things: they are the person in the photos or clips, they are 18 or older, and they agree to those photos being used and to an Instagram link. whereisshe.gg does not build a day from someone who has not agreed. A suggestion from the home page is not the same step. That form takes an Instagram handle, with an optional note and an optional email, and it is only a tip. If the person is you, Feature me is the path that carries consent.</p>
+<p>Feature me asks you to sign in with a verified email. You can send up to 10 https links and up to 5 photos or videos, 25 MB each, with a limit of one submission a day and three waiting at a time. Those limits keep the queue readable. They do not buy a spot on the calendar.</p>
+<h2>A person reads every submission</h2>
+<p>Submissions are reviewed by hand. whereisshe.gg is run by one developer, not by an automatic ranking of followers or likes. Sending photos does not guarantee a day. The reviewer can decline a submission. If a day is planned, the featured person sees it and approves it before it goes live. A puzzle without a recorded consent date is not put in the game. That check is what keeps an unfinished or unapproved set off the schedule.</p>
+<p>The photos have to be usable as geography. Five rounds need five locations, or five distinct looks at places a player can actually tell apart. A set that cannot support five rounds does not become a daily. Clips and photos should be ordinary travel scenes: streets, coasts, rooms, trails, food, transit. The game is for a general audience, so a day is built from those everyday scenes.</p>
+<h2>The pin is the photo, never a home</h2>
+<p>The answer for a round is the place the photo or clip was taken. It might be a square, a viewpoint, a station, or a trail. It is never a home address, and photos taken at or near home are not accepted. If a frame would point at a private address, it does not belong in a puzzle.</p>
+<h2>Credit waits until the last round</h2>
+<p>During the five rounds the game does not show the featured person's name or handle. A short line says that the name and profile appear after the last round, so the day stays about the places. On the results screen you get a traveler card: the name, the Instagram handle, a link to the profile they chose, and a photo if they provided one. The card notes that they took part with consent. If a consent date was recorded, the card can show it.</p>
+<p>The game supports she, he, and they on that card, using the pronoun recorded for the day. Anyone featured can ask for their photos and profile link to be removed at any time, for any reason, by emailing <a href="mailto:mikelyaps@gmail.com">mikelyaps@gmail.com</a>. Removal does not require an explanation. Questions about a submission go to the same address, on the <a href="../contact.html">contact page</a>. Premium moves a submission earlier in the review queue. It does not promise that the day will be approved. For how a published day shows up on the calendar, see <a href="daily-and-archive.html">daily and archive</a>.</p>
+</div>
+<footer><p class="muted"><a href="https://whereisshe.gg/">whereisshe.gg</a> is a small independent game. · <a href="../guides/">Guides</a> · <a href="../contact.html">Contact</a> · <a href="../about.html">About</a> · <a href="../how-to-play.html">How to play</a> · <a href="../terms.html">Terms</a> · <a href="../privacy.html">Privacy</a> · <a href="../refund.html">Refunds</a></p></footer>
+</main></body></html>

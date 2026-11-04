@@ -5,7 +5,7 @@
    Photos and videos under sources/ and mark/media are never cached.
    These requests are not intercepted at all (no respondWith, no cache):
    non-GET, /ads.txt, Supabase, PostHog, and Google ad hosts. */
-const CACHE = "wis-shell-v4";
+const CACHE = "wis-shell-v5";
 
 const PRECACHE = [
   "/",
@@ -15,6 +15,16 @@ const PRECACHE = [
   "/terms.html",
   "/privacy.html",
   "/refund.html",
+  "/contact.html",
+  "/guides/index.html",
+  "/guides/scoring.html",
+  "/guides/reading-clues.html",
+  "/guides/featured-people.html",
+  "/guides/daily-and-archive.html",
+  "/guides/beginner-clues.html",
+  "/guides/cities-and-countryside.html",
+  "/guides/sharing-and-streaks.html",
+  "/guides/map-and-distance.html",
   "/loadingzone.html",
   "/schedule.html",
   "/mark.html",
@@ -97,11 +107,13 @@ function isShell(url, request) {
   if (path.indexOf("/icons/") === 0) return true;
   if (path.indexOf("/vendor/") === 0 && /\.(?:css|js|png|svg)$/i.test(path)) return true;
   if (/^\/[^/]+\.(?:html?|css|js|webmanifest)$/i.test(path)) return true;
+  if (/^\/guides\/[^/]+\.html$/i.test(path)) return true;
   return false;
 }
 
 function shellPaths(pathname) {
   if (pathname === "/" || pathname === "/index.html") return ["/", "/index.html"];
+  if (pathname === "/guides" || pathname === "/guides/" || pathname === "/guides/index.html") return ["/guides/", "/guides/index.html"];
   return [pathname];
 }
 
@@ -138,7 +150,8 @@ async function matchShell(cache, request) {
   const path = new URL(request.url).pathname;
   return (await cache.match(path))
     || (await cache.match(request, { ignoreSearch: true }))
-    || (path === "/" ? cache.match("/index.html") : null);
+    || (path === "/" ? cache.match("/index.html") : null)
+    || (path === "/guides" || path === "/guides/" ? cache.match("/guides/index.html") : null);
 }
 
 function wantsFresh(request) {

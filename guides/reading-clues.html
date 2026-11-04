@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  // PostHog (whereisshe). Autocapture and session replay stay off so typed text is never sent.
+  !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+  posthog.init('phc_BFzhf5CAX9wKcoGBVXnX3uPb4T2LAjeD3ZfBGiHWvFxc', {
+    api_host: 'https://us.i.posthog.com',
+    person_profiles: 'identified_only',
+    autocapture: false,
+    disable_session_recording: true
+  });
+  posthog.register({ site: 'whereisshe' });
+</script>
+
+<title>Reading location clues in a short clip · whereisshe.gg</title>
+<link rel="canonical" href="https://whereisshe.gg/guides/reading-clues.html">
+<meta name="description" content="How to read a whereisshe.gg clip: signs and scripts, driving side, architecture, plants, light, and sound, without rushing the pin.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="whereisshe.gg">
+<meta property="og:url" content="https://whereisshe.gg/guides/reading-clues.html">
+<meta property="og:title" content="Reading location clues in a short clip">
+<meta property="og:description" content="How to read a whereisshe.gg clip: signs and scripts, driving side, architecture, plants, light, and sound, without rushing the pin.">
+<meta property="og:image" content="https://whereisshe.gg/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Reading location clues in a short clip">
+<meta name="twitter:description" content="How to read a whereisshe.gg clip: signs and scripts, driving side, architecture, plants, light, and sound, without rushing the pin.">
+<meta name="twitter:image" content="https://whereisshe.gg/og.png">
+<meta name="color-scheme" content="light dark">
+<script>
+  (function(){try{var t=JSON.parse(localStorage.getItem("wis.settings.v1")||"{}").theme||"dark";
+  if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="dark";}})();
+</script>
+<style>
+  :root,[data-theme="dark"]{color-scheme:dark;--bg:#18181A;--card:#232325;--ink:#ECEAE4;--muted:#9C9A94;--brand:#7d93ff;--line:rgba(236,234,228,.12)}
+  [data-theme="light"]{color-scheme:light;--bg:#F5F3EE;--card:#fff;--ink:#151821;--muted:#6C6B67;--brand:#3B5BFF;--line:rgba(21,24,33,.1)}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  main{max-width:760px;margin:0 auto;padding:28px 20px 60px}
+  .card{background:var(--card);border-radius:20px;padding:26px 26px 20px;border:1px solid var(--line)}
+  h1{font-size:30px;letter-spacing:-.03em;margin:0 0 4px} h2{font-size:18px;margin:26px 0 6px}
+  .upd{color:var(--muted);font-size:13px;margin:0 0 18px} a{color:var(--brand)} li{margin:4px 0}
+  nav{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;margin:0 0 16px} nav a{text-decoration:none;font-weight:700}
+  .muted{color:var(--muted);font-size:14px}
+  .guide-list{padding-left:18px} .guide-list a{font-weight:700}
+  footer{margin-top:8px}
+</style>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="theme-color" content="#18181A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="whereisshe.gg">
+<script src="/pwa.js?v=6db3674490"></script>
+</head><body><main>
+<nav><a href="../">← Play whereisshe.gg</a><a href="../guides/">Guides</a><a href="../about.html">About</a><a href="../how-to-play.html">How to play</a><a href="../contact.html">Contact</a><a href="../terms.html">Terms</a><a href="../privacy.html">Privacy</a><a href="../refund.html">Refunds</a></nav>
+<div class="card">
+<h1>Reading location clues in a short clip</h1>
+<p class="upd">A practical way to watch a round on whereisshe.gg before you drop a pin.</p>
+<h2>Watch once for the obvious, then again for the small</h2>
+<p>Clips on whereisshe.gg loop, and they start muted until you choose sound. The first pass is for anything you can name immediately: a language, a flag, a skyline, a coastline, a mountain. The second pass is for smaller evidence that confirms or challenges that idea. One clue is a hypothesis. Two clues that agree are a guess. Still photos can be zoomed. There is no score penalty for waiting, which is why a careful pin beats a fast one on the wrong continent. The <a href="scoring.html">scoring guide</a> shows how steep that gap is.</p>
+<h2>Signs, scripts, and shop fronts</h2>
+<p>Text is the strongest clue when it is readable. The script narrows the world before the words do. Hangul is Korean. Hiragana and katakana point to Japanese. Han characters appear in several places: simplified characters are used in mainland China and in Singapore, and traditional characters are used in Taiwan, Hong Kong, and Macau. Arabic script covers many countries, so the script alone is not a country. The same is true of Cyrillic and of the Latin alphabet. After the script, look at spellings, accents, and place-name habits. A shop name in Portuguese and a shop name in Spanish can share a script and still separate a region.</p>
+<p>Street blades, bus stops, and the language on a menu are often more specific than a billboard. If the words name a town, check that the road and the driving side do not contradict it.</p>
+<h2>Driving side, roads, and buildings</h2>
+<p>Traffic flow tells you which side of the road people drive on. Many countries drive on the left, including the United Kingdom, Japan, Australia, India, and much of southern Africa and Southeast Asia. Most of the Americas and continental Europe drive on the right. A quiet road with no cars can still show the side, through parked cars, the position of the driver's door, or a sign facing oncoming traffic. Road paint helps next. Yellow centre lines are common in North America. White lines are common across much of Europe. Neither rule is universal, so treat paint as support, not as proof.</p>
+<p>Roof shape, shutters, utility poles, and the pavement are regional, and a red tiled roof can sit in many countries. Pair buildings with the script and the driving side before you commit to a city. Palms, cactus, birch, and eucalyptus suggest climate, not a country.</p>
+<h2>Light, weather, and sound</h2>
+<p>Shadows are a hemisphere clue when you can tell the time of day. Around midday the sun stands in the southern sky in the northern hemisphere and in the northern sky in the southern hemisphere. A low sun and a long shadow tell you less about north and south, and more about morning or evening. Weather and clothing tell you season only if you already have a hemisphere. A coat in frame can be winter in one half of the world and a cold morning in the other.</p>
+<p>If you turn sound on, listen for language and for which side the traffic passes. Do not hang the guess on one muffled word. In a car, use the steering wheel and the lane markings. The task is the place, not the person. When the clues agree, open the map. <a href="beginner-clues.html">The beginner clue guide</a> puts this in a fixed order, and <a href="cities-and-countryside.html">cities and countryside</a> covers frames with almost no text.</p>
+</div>
+<footer><p class="muted"><a href="https://whereisshe.gg/">whereisshe.gg</a> is a small independent game. · <a href="../guides/">Guides</a> · <a href="../contact.html">Contact</a> · <a href="../about.html">About</a> · <a href="../how-to-play.html">How to play</a> · <a href="../terms.html">Terms</a> · <a href="../privacy.html">Privacy</a> · <a href="../refund.html">Refunds</a></p></footer>
+</main></body></html>

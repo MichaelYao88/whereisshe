@@ -674,6 +674,7 @@ function nextRound() {
 
 // ================================================================ interstitial
 function showInterstitial(done) {
+  if (!state.puzzle || document.documentElement.classList.contains("ads-held")) { done(); return; }
   const ov = $("#interstitial"), btn = $("#skipAd"); let s = CONFIG.interstitialSeconds; state.busy = true;
   ov.classList.remove("hidden"); btn.disabled = true; btn.textContent = `Skip in ${s}`;
   renderInterstitialAd();   // AdSense unit when CONFIG.ads is on (placeholder otherwise / if blocked)
@@ -787,6 +788,7 @@ function showView(v) {
   if (v === "play") fitStage();
   if (v === "play" && map) setTimeout(() => map.invalidateSize(), 0);
   if (v === "home") syncHomeMotion();
+  syncAdSlots();
 }
 const HOME_TITLE = "whereisshe.gg · Play today's where-in-the-world puzzle";
 function fillHomeCard() {
@@ -1115,8 +1117,8 @@ function howModal() {
 }
 function aboutModal() {
   // no per-round credits here: they would spoil the answers and name the featured woman before round 5
-  openModal(`<h2>About &amp; credits</h2><p style="color:var(--muted);font-size:14px">whereisshe.gg is a prototype. Every day features someone who opted in; their photos are used with their permission, and they're credited (with a link to their Instagram) on the traveler card after round 5.</p>
-    <p style="font-size:13px"><a href="about.html" target="_blank" rel="noopener">About</a> · <a href="how-to-play.html" target="_blank" rel="noopener">How to play</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a> · <a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="refund.html" target="_blank" rel="noopener">Refunds</a></p>
+  openModal(`<h2>About &amp; credits</h2><p style="color:var(--muted);font-size:14px">whereisshe.gg is a daily geography game. Every day features someone who opted in; their photos are used with their permission, and they're credited (with a link to their Instagram) on the traveler card after round 5.</p>
+    <p style="font-size:13px"><a href="guides/" target="_blank" rel="noopener">Guides</a> · <a href="about.html" target="_blank" rel="noopener">About</a> · <a href="how-to-play.html" target="_blank" rel="noopener">How to play</a> · <a href="contact.html" target="_blank" rel="noopener">Contact</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a> · <a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="refund.html" target="_blank" rel="noopener">Refunds</a></p>
     <p style="font-size:12px;color:var(--muted)">Map data © OpenStreetMap contributors · Basemap: OpenFreeMap / OpenMapTiles (fallback: Esri). Rendering: MapLibre GL JS (BSD-3-Clause). Map library: Leaflet (BSD-2-Clause).</p>`);
 }
 
@@ -1289,6 +1291,7 @@ function applyPremium() { setTimeout(fitStage, 0);
   if (on && ad) { adTopNode = ad; ad.remove(); }                                   // Premium: the ad slot is removed, not just hidden
   else if (!on && !ad && adTopNode) { $("#topbar").after(adTopNode); }
   paintHomePremium();
+  syncAdSlots();
 }
 function checkoutUrl() {
   const u = new URL(CONFIG.premium.checkoutUrl, location.href);
@@ -1324,16 +1327,46 @@ function rerenderOpen() {
   const m = $("#modal"); if (!m.classList.contains("hidden")) { const k = m.dataset.kind; if (k === "account") accountModal(); else if (k === "premium") premiumModal(); }
   renderFeatureExtras();
 }
-// ---- AdSense: post-round-5 unit only, never for Premium (the script isn't even loaded); placeholder if no slot / blocked
+// ---- AdSense: post-round-5 unit only, never for Premium (the script isn't even loaded); placeholder if no slot / blocked.
+// The top banner and the interstitial are not requested unless a real puzzle is on screen.
 let interPlaceholder = null;
+function puzzleOnScreen() {
+  const playing = !!(state.puzzle && state.puzzle.rounds && state.puzzle.rounds.length);
+  const emptyOpen = !!($("#emptyDay") && !$("#emptyDay").classList.contains("hidden"));
+  return playing && !emptyOpen && !$("#playView").classList.contains("hidden");
+}
+function syncAdSlots() {
+  const onPlay = puzzleOnScreen();
+  document.documentElement.classList.toggle("ads-live", onPlay && !isPremium());
+  document.documentElement.classList.toggle("ads-held", !onPlay);
+  if (!onPlay) {
+    const inter = $("#interstitial"); if (inter) inter.classList.add("hidden");
+    document.querySelectorAll("#adTop ins.adsbygoogle, #interstitial ins.adsbygoogle, .inter-ph ins.adsbygoogle").forEach(n => n.remove());
+    const fill = $("#interstitial .inter-fill");
+    if (fill && interPlaceholder != null) fill.innerHTML = interPlaceholder;
+  }
+  renderBannerAd();
+}
+function renderBannerAd() {
+  const fill = document.querySelector("#adTop .ad-fill");
+  if (!fill) return;
+  // Slot 7982022596 is the post-round-5 unit. Do not push adsbygoogle into #adTop.
+  // With no puzzle on screen, ads-live is off so #adTop is hidden, and ads-held blocks the interstitial.
+  if (!state.puzzle || document.documentElement.classList.contains("ads-held") || isPremium()) {
+    fill.querySelectorAll("ins.adsbygoogle").forEach(n => n.remove());
+    return;
+  }
+}
 function ensureAdSense() {
   if (!adsOn() || isPremium()) return Promise.reject(new Error("ads off"));
   return loadScript(`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(CONFIG.ads.client)}`, { crossorigin: "anonymous" });
 }
 function renderInterstitialAd() {
-  const fill = $("#interstitial .inter-fill"); if (interPlaceholder == null) interPlaceholder = fill.innerHTML;
-  fill.innerHTML = interPlaceholder;
-  if (!adsOn() || !CONFIG.ads.slot || isPremium()) return;
+  const fill = $("#interstitial .inter-fill"); if (fill && interPlaceholder == null) interPlaceholder = fill.innerHTML;
+  if (!state.puzzle || document.documentElement.classList.contains("ads-held") || !adsOn() || !CONFIG.ads.slot || isPremium()) {
+    if (fill && interPlaceholder != null) fill.innerHTML = interPlaceholder;
+    return;
+  }
   ensureAdSense().then(() => {
     fill.innerHTML = `<ins class="adsbygoogle" style="display:block;min-height:250px" data-ad-client="${esc(CONFIG.ads.client)}" data-ad-slot="${esc(CONFIG.ads.slot)}" data-ad-format="auto" data-full-width-responsive="true"></ins>`;
     try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch { fill.innerHTML = interPlaceholder; return; }
