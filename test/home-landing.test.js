@@ -162,7 +162,7 @@ test("the page wires the three home events and leaves checkout alone", () => {
   assert.match(html, /href="#optin"/);
   const card = sliceBetween(app, "function fillHomeCard", "function syncHomeMotion");
   assert.doesNotMatch(card, /poster|place_name|\.lat|\.lng|rounds/);
-  assert.match(sw, /wis-shell-v4/);
+  assert.match(sw, /wis-shell-v5/);
   assert.match(sw, /\/home\.js/);
 });
 
@@ -176,8 +176,8 @@ test("the home page has no under-construction copy for AdSense review", () => {
   assert.doesNotMatch(html, /<!--(?:(?!-->)[\s\S])*placeholder(?:(?!-->)[\s\S])*-->/i);
   assert.match(html, /ca-pub-5196178239625142/);
   assert.match(html, /posthog\.init\(/);
-  assert.match(sw, /const CACHE = "wis-shell-v4"/);
-  assert.doesNotMatch(sw, /wis-shell-v3/);
+  assert.match(sw, /const CACHE = "wis-shell-v5"/);
+  assert.doesNotMatch(sw, /wis-shell-v4/);
   assert.match(app, /ca-pub-5196178239625142/);
   assert.match(app, /7982022596/);
 });
@@ -203,3 +203,102 @@ test("the suggestions migration is insert-only and rate-limited in private", () 
   assert.match(migration, /execute function private\.feature_suggestions_guard\(\)/i);
   assert.match(migration, /char_length\(btrim\(handle\)\) between 1 and 30/);
 });
+
+const GUIDE_PAGES = [
+  ["guides/index.html", "https://whereisshe.gg/guides/"],
+  ["guides/scoring.html", "https://whereisshe.gg/guides/scoring.html"],
+  ["guides/reading-clues.html", "https://whereisshe.gg/guides/reading-clues.html"],
+  ["guides/featured-people.html", "https://whereisshe.gg/guides/featured-people.html"],
+  ["guides/daily-and-archive.html", "https://whereisshe.gg/guides/daily-and-archive.html"],
+  ["guides/beginner-clues.html", "https://whereisshe.gg/guides/beginner-clues.html"],
+  ["guides/cities-and-countryside.html", "https://whereisshe.gg/guides/cities-and-countryside.html"],
+  ["guides/sharing-and-streaks.html", "https://whereisshe.gg/guides/sharing-and-streaks.html"],
+  ["guides/map-and-distance.html", "https://whereisshe.gg/guides/map-and-distance.html"]
+];
+
+function visibleWords(src) {
+  const text = src
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&[a-z#0-9]+;/gi, " ");
+  return text.split(/\s+/).filter(Boolean);
+}
+
+test("the home intro, empty state, and footers keep ads off screens with no puzzle", () => {
+  const intro = sliceBetween(html, 'id="homeIntro"', 'id="homePremium"');
+  const paras = [...intro.matchAll(/<p>([\s\S]*?)<\/p>/g)].map(m => m[1]).join(" ");
+  const words = visibleWords(paras);
+  assert.ok(words.length >= 140 && words.length <= 180, "intro words " + words.length);
+  assert.match(intro, /href="guides\/"/);
+  assert.match(intro, /whereisshe\.gg is a free daily geography game/);
+  assert.doesNotMatch(intro, /—|–|prototype|coming soon|placeholder/i);
+
+  const empty = sliceBetween(html, 'id="emptyDay"', 'id="shareChallengeTop"');
+  assert.match(empty, /Nothing scheduled/);
+  assert.match(empty, /id="emptyArchive" href="#archive"/);
+  assert.match(empty, /Play the archive/);
+  assert.match(empty, /href="guides\/"/);
+  assert.match(empty, /href="guides\/scoring\.html"/);
+  assert.match(html, /href="guides\/">Guides<\/a>/);
+  assert.match(html, /href="contact\.html">Contact<\/a>/);
+
+  assert.match(css, /html:not\(\.ads-live\) #adTop/);
+  assert.match(css, /html\.ads-held #interstitial/);
+  assert.match(css, /html\.ads-held \.inter-ph/);
+  assert.match(app, /function syncAdSlots\(/);
+  assert.match(app, /function puzzleOnScreen\(/);
+  assert.match(app, /ads-held/);
+  assert.match(app, /ads-live/);
+  const banner = sliceBetween(app, "function renderBannerAd()", "function ensureAdSense()");
+  assert.match(banner, /ads-held/);
+  assert.match(banner, /!state\.puzzle/);
+  assert.doesNotMatch(banner, /\.push\(/);
+  const inter = sliceBetween(app, "function renderInterstitialAd()", "function renderAccountUI()");
+  const guard = inter.indexOf("return;");
+  const push = inter.indexOf(".push(");
+  assert.ok(guard >= 0 && push > guard, "interstitial push stays behind the empty-state return");
+  assert.match(inter, /!state\.puzzle \|\| document\.documentElement\.classList\.contains\("ads-held"\)/);
+  assert.match(app, /if \(!state\.puzzle \|\| document\.documentElement\.classList\.contains\("ads-held"\)\) \{ done\(\); return; \}/);
+
+  for (const file of ["about.html", "how-to-play.html", "privacy.html", "terms.html", "refund.html", "contact.html"]) {
+    const page = fs.readFileSync(path.join(root, file), "utf8");
+    assert.match(page, /<footer>/);
+    assert.match(page, /href="guides\/"/);
+    assert.match(page, /href="contact\.html"/);
+  }
+  const privacy = fs.readFileSync(path.join(root, "privacy.html"), "utf8");
+  const terms = fs.readFileSync(path.join(root, "terms.html"), "utf8");
+  assert.match(privacy, /<meta name="description" content="[^"]{40,}"/);
+  assert.match(terms, /<meta name="description" content="[^"]{40,}"/);
+  assert.match(fs.readFileSync(path.join(root, "contact.html"), "utf8"), /mailto:mikelyaps@gmail\.com/);
+});
+
+test("guide pages, contact, and the sitemap are crawlable", () => {
+  const sitemap = fs.readFileSync(path.join(root, "sitemap.xml"), "utf8");
+  const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1]);
+  assert.ok(locs.includes("https://whereisshe.gg/contact.html"));
+  assert.ok(locs.includes("https://whereisshe.gg/guides/"));
+  for (const block of sitemap.split("</url>")) {
+    if (!block.includes("<loc>")) continue;
+    assert.match(block, /<lastmod>2026-11-04<\/lastmod>/);
+  }
+  for (const [file, canonical] of GUIDE_PAGES) {
+    const page = fs.readFileSync(path.join(root, file), "utf8");
+    assert.match(page, /<title>[^<]+<\/title>/);
+    assert.match(page, new RegExp('<link rel="canonical" href="' + canonical.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + '">'));
+    assert.match(page, /<meta name="description" content="[^"]{40,}"/);
+    assert.match(page, /<footer>/);
+    assert.match(page, /href="[^"]*contact\.html"/);
+    assert.doesNotMatch(page.replace(/<script[\s\S]*?<\/script>/gi, " "), /—|prototype|coming soon|placeholder|swimwear|bikini/i);
+    const card = page.slice(page.indexOf('<div class="card">'), page.indexOf("<footer>"));
+    const count = visibleWords(card).length;
+    const min = file.endsWith("index.html") ? 250 : 300;
+    assert.ok(count >= min && count <= 600, file + " words " + count);
+    assert.ok(sitemap.includes("<loc>" + canonical + "</loc>"), canonical);
+    assert.match(sw, new RegExp(file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  assert.ok(sw.includes("/^\\/guides\\/[^/]+\\.html$/i"));
+  assert.match(sw, /\/guides\/index\.html/);
+});
+
